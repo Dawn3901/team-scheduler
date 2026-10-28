@@ -1,0 +1,11 @@
+{
+  "name": "teamsync",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @teamsync/web dev",
+    "build": "pnpm --filter @teamsync/web build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  }
+}
