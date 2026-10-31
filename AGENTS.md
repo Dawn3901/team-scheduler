@@ -93,8 +93,8 @@ pnpm -r lint
 # 全量检查（DoD）
 make check                      # pytest + vitest + typecheck + lint
 
-# 种子 / 压测（尚未建立）
-make seed                       # W1-09
+# 种子 / 压测
+make seed                       # 3 用户 + 1 团队（可重复）
 python scripts/bench.py         # W5
 
 # 三端

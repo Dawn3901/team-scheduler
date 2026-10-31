@@ -19,7 +19,7 @@ help:
 	@echo "  make test-web frontend Vitest only"
 	@echo "  make migrate  alembic upgrade head"
 	@echo "  make build    build Web assets"
-	@echo "  make seed     seed data (planned in W1-09)"
+	@echo "  make seed     seed demo data (3 users + 1 team, repeatable)"
 
 setup:
 	@$(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' || (echo "Python 3.12+ is required" && exit 1)
@@ -59,5 +59,5 @@ build:
 	pnpm --filter @teamsync/web build
 
 seed:
-	@echo "make seed is not available yet (planned in W1-09)" >&2
-	@exit 1
+	cd server && $(VENV_PY) -m alembic upgrade head
+	cd server && $(VENV_PY) -m app.seed

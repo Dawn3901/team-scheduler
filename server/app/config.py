@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     team_timezone: str = "Asia/Shanghai"
     access_token_expire_days: int = 7
     log_level: str = "INFO"
+    # make seed 的演示账号密码；不设时种子脚本会明确报错。
+    seed_password: str | None = None
 
     @field_validator("database_url")
     @classmethod
