@@ -1,15 +1,17 @@
-"""认证依赖：从 Bearer token 解析当前用户。"""
+"""认证依赖：从 Bearer token 解析当前用户；团队依赖：校验成员身份。"""
 
+from dataclasses import dataclass
 from typing import Annotated
 
 import jwt
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.errors import ApiError
-from app.models import User
+from app.models import Team, TeamMember, User
 from app.security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -23,6 +25,10 @@ def _unauthorized() -> ApiError:
         "请先登录",
         headers=UNAUTHORIZED_HEADERS,
     )
+
+
+def _not_found() -> ApiError:
+    return ApiError(404, "NOT_FOUND", "资源不存在")
 
 
 def get_current_user(
@@ -49,3 +55,34 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+@dataclass(frozen=True)
+class TeamContext:
+    team: Team
+    member: TeamMember
+
+
+def require_member(
+    team_id: int,
+    user: CurrentUser,
+    db: Annotated[Session, Depends(get_db)],
+) -> TeamContext:
+    """校验当前用户是团队活跃成员；团队不存在/已删除/非成员统一 404。"""
+    team = db.get(Team, team_id)
+    if team is None or team.deleted_at is not None:
+        raise _not_found()
+
+    member = db.scalar(
+        select(TeamMember).where(
+            TeamMember.team_id == team_id,
+            TeamMember.user_id == user.id,
+            TeamMember.status == "active",
+        )
+    )
+    if member is None:
+        raise _not_found()
+    return TeamContext(team=team, member=member)
+
+
+MemberContext = Annotated[TeamContext, Depends(require_member)]

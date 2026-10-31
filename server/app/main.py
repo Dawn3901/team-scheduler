@@ -7,7 +7,7 @@ from app import __version__
 from app.config import get_settings
 from app.errors import register_exception_handlers
 from app.logging import configure_logging
-from app.routers import auth, health
+from app.routers import auth, health, teams
 
 CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 SECURITY_HEADERS = {
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
+    app.include_router(teams.router, prefix=settings.api_v1_prefix)
     register_exception_handlers(app)
     _add_security_headers(app)
     return app
