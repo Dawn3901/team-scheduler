@@ -5,11 +5,12 @@ import { pathToFileURL } from "node:url";
 
 /**
  * W1-08 桌面壳：打开窗口并加载登录页。
- * - 开发：设置 TEAMSYNC_WEB_URL（例如 http://127.0.0.1:5173）走 Vite HMR。
+ * - 开发：设置 TEAMSYNC_WEB_URL 或传 --web-url=http://127.0.0.1:5173 走 Vite HMR。
  * - 默认：通过 app:// 协议加载 apps/web/dist，不依赖本地 Web 服务。
  * 托盘、系统通知与打包在 W4/W5 接入；这里不碰本地数据库。
  */
-const DEV_URL = process.env.TEAMSYNC_WEB_URL;
+const webUrlArg = process.argv.find((arg) => arg.startsWith("--web-url="));
+const DEV_URL = webUrlArg?.slice("--web-url=".length) ?? process.env.TEAMSYNC_WEB_URL;
 const SMOKE_TEST = process.argv.includes("--smoke-test");
 const APP_ORIGIN = "app://teamsync";
 const WEB_DIST = path.join(__dirname, "..", "..", "web", "dist");
