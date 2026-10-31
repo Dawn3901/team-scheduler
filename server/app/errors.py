@@ -16,6 +16,8 @@ HTTP_ERROR_CODES = {
     403: "FORBIDDEN",
     404: "NOT_FOUND",
     405: "METHOD_NOT_ALLOWED",
+    409: "CONFLICT",
+    422: "UNPROCESSABLE_ENTITY",
     429: "RATE_LIMITED",
     500: "INTERNAL_ERROR",
 }
@@ -68,7 +70,11 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = HTTP_ERROR_CODES.get(exc.status_code, "HTTP_ERROR")
-        return JSONResponse(status_code=exc.status_code, content=error_body(code, str(exc.detail)))
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=error_body(code, str(exc.detail)),
+            headers=exc.headers,
+        )
 
     @app.exception_handler(Exception)
     async def _unhandled_error(request: Request, exc: Exception) -> JSONResponse:
