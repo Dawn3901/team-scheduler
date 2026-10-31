@@ -1,0 +1,18 @@
+{
+  "name": "@teamsync/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TeamSync Electron 桌面壳：加载同一套 Web 构建",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "electron .",
+    "dev": "tsc -p tsconfig.json && electron ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "electron": "^45.2.1",
+    "typescript": "^6.0.3"
+  }
+}

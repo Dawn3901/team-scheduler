@@ -1,0 +1,20 @@
+{
+  "name": "@teamsync/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TeamSync Capacitor Android 壳：加载同一套 Web 构建",
+  "scripts": {
+    "build:web": "pnpm --filter @teamsync/web build",
+    "add:android": "cap add android",
+    "sync": "cap sync android",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
+    "typescript": "^6.0.3"
+  }
+}
