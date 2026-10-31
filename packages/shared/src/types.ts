@@ -16,6 +16,8 @@ export interface UserSummary {
   avatar_color: string;
 }
 
+export type TeamRole = "owner" | "admin" | "member";
+
 export interface TeamSummary {
   id: number;
   name: string;
@@ -23,6 +25,12 @@ export interface TeamSummary {
   invite_code: string;
   owner_id: number;
   timezone: string;
-  my_role: "owner" | "admin" | "member";
+  my_role: TeamRole;
   member_count: number;
+}
+
+/** 契约：所有列表都返回 { items, total }，不是裸数组。 */
+export interface Paginated<T> {
+  items: T[];
+  total: number;
 }
