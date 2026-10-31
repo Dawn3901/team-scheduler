@@ -23,6 +23,7 @@ help:
 setup:
 	@$(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' || (echo "Python 3.12+ is required" && exit 1)
 	@if [ -d server/.venv ] && [ ! -f server/$(VENV_PY) ]; then echo "server/.venv belongs to another platform. Delete server/.venv and rerun make setup."; exit 1; fi
+	@$(PYTHON) scripts/init_env.py
 	cd server && $(PYTHON) -m venv .venv && $(VENV_PY) -m pip install -e ".[dev]"
 	pnpm install
 
