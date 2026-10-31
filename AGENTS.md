@@ -74,8 +74,7 @@ TeamSync（同频）：面向 3–20 人小团队的共享日程 + 轻量任务�
 
 ```bash
 # 一次性安装
-cp .env.example .env            # 至少改 SECRET_KEY
-make setup                      # server/.venv + pnpm install
+make setup                      # 缺 .env 时自动生成随机 SECRET_KEY；再装 server/.venv + pnpm
 make migrate                    # alembic upgrade head
 
 # 开发

@@ -6,7 +6,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -59,6 +59,22 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
+MISSING_SECRET_KEY_HINT = (
+    "缺少 SECRET_KEY：请在仓库根目录执行 `python scripts/init_env.py`"
+    "（或 `cp .env.example .env`）生成 .env 后再启动。"
+)
+
+
+def load_settings() -> Settings:
+    """加载配置；缺少 SECRET_KEY 时给出可操作提示而不是 Pydantic 堆栈。"""
+    try:
+        return Settings()
+    except ValidationError as exc:
+        if any(error["loc"] == ("secret_key",) for error in exc.errors()):
+            raise RuntimeError(MISSING_SECRET_KEY_HINT) from exc
+        raise
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return load_settings()

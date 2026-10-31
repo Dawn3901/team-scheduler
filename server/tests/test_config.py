@@ -1,9 +1,12 @@
 import tempfile
 from pathlib import Path
 
+import pytest
+from pydantic_settings import SettingsConfigDict
 from sqlalchemy.engine import make_url
 
-from app.config import SERVER_DIR, Settings, resolve_database_url
+from app import config
+from app.config import SERVER_DIR, Settings, load_settings, resolve_database_url
 
 
 def test_relative_sqlite_path_resolves_under_server() -> None:
@@ -41,3 +44,14 @@ def test_settings_validator_resolves_database_url() -> None:
     assert Path(make_url(settings.database_url).database or "").resolve() == (
         SERVER_DIR / "data/validator.db"
     ).resolve()
+
+
+def test_missing_secret_key_has_actionable_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    class NoEnvFileSettings(Settings):
+        model_config = SettingsConfigDict(env_file=None, extra="ignore")
+
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setattr(config, "Settings", NoEnvFileSettings)
+
+    with pytest.raises(RuntimeError, match="scripts/init_env.py"):
+        load_settings()
