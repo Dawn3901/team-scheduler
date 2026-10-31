@@ -97,10 +97,12 @@ make check                      # pytest + vitest + typecheck + lint
 make seed                       # W1-09
 python scripts/bench.py         # W5
 
-# 三端（尚未建立，W1-08 起步）
+# 三端
 pnpm --filter @teamsync/web build
-pnpm --filter desktop build     # electron-builder
-npx cap sync android && cd apps/mobile/android && ./gradlew assembleDebug
+pnpm --filter @teamsync/desktop build   # tsc 编译主进程/preload
+pnpm dev:desktop                        # 构建 Web + 启动 Electron 壳
+pnpm sync:android                       # Web 构建 + cap sync android
+cd apps/mobile/android && ./gradlew assembleDebug   # 需 Android SDK + JDK 17/21
 ```
 
 ### 命令约定
