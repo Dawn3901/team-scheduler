@@ -81,6 +81,21 @@ h1 {
   color: var(--muted);
 }
 
+.retry {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.retry:hover {
+  border-color: var(--accent);
+}
+
 .dot {
   width: 8px;
   height: 8px;

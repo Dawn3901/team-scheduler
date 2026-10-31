@@ -91,7 +91,7 @@ pnpm -r typecheck
 pnpm -r lint
 
 # 全量检查（DoD）
-make check                      # pytest + typecheck + lint
+make check                      # pytest + vitest + typecheck + lint
 
 # 种子 / 压测（尚未建立）
 make seed                       # W1-09
@@ -118,7 +118,7 @@ npx cap sync android && cd apps/mobile/android && ./gradlew assembleDebug
 
 - [ ] 关联至少 1 个 P0 需求编号；实现与 PRD 一致。
 - [ ] 新增/修改逻辑有测试；修 bug 有回归用例。
-- [ ] `make check` 全绿（后端 pytest + 前端 typecheck/lint）。
+- [ ] `make check` 全绿（后端 pytest + 前端 Vitest + typecheck/lint）。
 - [ ] 涉及权限/私密/时区/冲突/提醒的改动，有对应测试。
 - [ ] API/DB 变更已更新 `docs/03` 与 `docs/ai/02`，并有迁移。
 - [ ] 没有密钥、`.env`、调试日志、`console.log`、`print` 残留。

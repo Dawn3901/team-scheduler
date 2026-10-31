@@ -8,14 +8,15 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup dev dev-api dev-web test typecheck lint check migrate build seed
+.PHONY: help setup dev dev-api dev-web test test-web typecheck lint check migrate build seed
 
 help:
 	@echo "TeamSync commands:"
 	@echo "  make setup    install Python / Node dependencies"
 	@echo "  make dev      start backend(8000) and frontend(5173)"
-	@echo "  make check    pytest + typecheck + lint"
+	@echo "  make check    pytest + vitest + typecheck + lint"
 	@echo "  make test     backend pytest only"
+	@echo "  make test-web frontend Vitest only"
 	@echo "  make migrate  alembic upgrade head"
 	@echo "  make build    build Web assets"
 	@echo "  make seed     seed data (planned in W1-09)"
@@ -39,6 +40,9 @@ dev-web:
 test:
 	cd server && $(VENV_PY) -m pytest
 
+test-web:
+	pnpm test
+
 typecheck:
 	pnpm -r typecheck
 
@@ -46,7 +50,7 @@ lint:
 	cd server && $(VENV_PY) -m ruff check .
 	pnpm -r lint
 
-check: test typecheck lint
+check: test test-web typecheck lint
 
 migrate:
 	cd server && $(VENV_PY) -m alembic upgrade head

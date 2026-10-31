@@ -34,7 +34,7 @@ jobs:
         run: alembic upgrade head
 
   frontend:
-    name: 前端（typecheck + lint + build）
+    name: 前端（typecheck + lint + test + build）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,6 +56,9 @@ jobs:
 
       - name: Lint
         run: pnpm -r lint
+
+      - name: 单元测试
+        run: pnpm test
 
       - name: 构建
         run: pnpm --filter @teamsync/web build
