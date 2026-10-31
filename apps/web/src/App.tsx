@@ -1,78 +1,69 @@
-import { useEffect, useState } from "react";
-import { fetchHealth, type HealthStatus } from "@teamsync/shared";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-type BackendState = "checking" | "ok" | "down";
-
-const NEXT_STEPS = [
-  "W1-06 团队创建、邀请码、成员列表",
-  "W1-07 登录页、团队页与 AppShell",
-  "W1-08 Electron / Android 空壳",
-  "W1-09 种子脚本 v0：3 用户 + 1 团队",
-];
+import { AppShell } from "./components/AppShell";
+import { RequireAuth } from "./components/RequireAuth";
+import { TeamLayout } from "./components/TeamLayout";
+import { useUnauthorizedRedirect } from "./hooks/useUnauthorizedRedirect";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import TeamPlaceholderPage from "./pages/TeamPlaceholderPage";
+import TeamSelectPage from "./pages/TeamSelectPage";
 
 export default function App() {
-  const [backend, setBackend] = useState<BackendState>("checking");
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchHealth()
-      .then((result) => {
-        if (cancelled) return;
-        setHealth(result);
-        setBackend("ok");
-      })
-      .catch(() => {
-        if (!cancelled) setBackend("down");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [attempt]);
-
-  const retry = () => {
-    setBackend("checking");
-    setHealth(null);
-    setAttempt((value) => value + 1);
-  };
-
-  const backendLabel =
-    backend === "checking" ? "检查中…" : backend === "ok" ? "已连接" : "未连接";
+  useUnauthorizedRedirect();
 
   return (
-    <main className="page">
-      <section className="card">
-        <p className="eyebrow">TeamSync · 同频</p>
-        <h1>团队共享日程</h1>
-        <p className="lede">
-          仓库骨架已建立：Web、FastAPI、共享 API Client 与 Alembic 迁移可运行。
-        </p>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-        <div className={`status status-${backend}`}>
-          <span className="dot" aria-hidden="true" />
-          <span>后端 {backendLabel}</span>
-          {health ? <code>db: {health.db}</code> : null}
-          {backend === "down" ? (
-            <button type="button" className="retry" onClick={retry}>
-              重试
-            </button>
-          ) : null}
-        </div>
+      <Route element={<RequireAuth />}>
+        <Route element={<AppShell />}>
+          <Route path="/app" element={<TeamSelectPage />} />
 
-        <h2>接下来</h2>
-        <ol className="steps">
-          {NEXT_STEPS.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
+          <Route path="/app/teams/:teamId" element={<TeamLayout />}>
+            <Route index element={<Navigate to="calendar" replace />} />
+            <Route
+              path="calendar"
+              element={
+                <TeamPlaceholderPage
+                  title="日历"
+                  description="月 / 周 / 日视图、忙闲与冲突提示将在这里呈现。"
+                />
+              }
+            />
+            <Route
+              path="tasks"
+              element={
+                <TeamPlaceholderPage
+                  title="任务"
+                  description="团队任务的列表、指派与完成状态将在这里呈现。"
+                />
+              }
+            />
+            <Route
+              path="members"
+              element={
+                <TeamPlaceholderPage
+                  title="成员"
+                  description="成员角色、邀请码与移除操作将在这里呈现。"
+                />
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <TeamPlaceholderPage
+                  title="设置"
+                  description="团队资料、时区与邀请码轮换将在这里呈现。"
+                />
+              }
+            />
+          </Route>
+        </Route>
+      </Route>
 
-        <p className="hint">
-          启动：<code>make dev</code>（后端 8000 / 前端 5173）。契约以 docs/03 为准。
-        </p>
-      </section>
-    </main>
+      <Route path="*" element={<Navigate to="/app" replace />} />
+    </Routes>
   );
 }
