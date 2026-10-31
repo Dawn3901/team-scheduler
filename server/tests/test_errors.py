@@ -54,6 +54,8 @@ def test_api_error_keeps_specific_code(error_app: FastAPI, status: int, code: st
 @pytest.mark.parametrize(
     ("status", "code"),
     [
+        (401, "UNAUTHORIZED"),
+        (403, "FORBIDDEN"),
         (409, "CONFLICT"),
         (422, "UNPROCESSABLE_ENTITY"),
     ],
