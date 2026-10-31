@@ -16,6 +16,11 @@ dist/
 release/
 *.tsbuildinfo
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
 # Env
 .env
 .env.*
