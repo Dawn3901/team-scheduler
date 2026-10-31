@@ -4,15 +4,16 @@ import { fetchHealth, type HealthStatus } from "@teamsync/shared";
 type BackendState = "checking" | "ok" | "down";
 
 const NEXT_STEPS = [
-  "W1-04 数据库迁移与 users / teams / team_members 表",
-  "W1-05 注册、登录、JWT 与统一鉴权依赖",
   "W1-06 团队创建、邀请码、成员列表",
   "W1-07 登录页、团队页与 AppShell",
+  "W1-08 Electron / Android 空壳",
+  "W1-09 种子脚本 v0：3 用户 + 1 团队",
 ];
 
 export default function App() {
   const [backend, setBackend] = useState<BackendState>("checking");
   const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +31,13 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
+
+  const retry = () => {
+    setBackend("checking");
+    setHealth(null);
+    setAttempt((value) => value + 1);
+  };
 
   const backendLabel =
     backend === "checking" ? "检查中…" : backend === "ok" ? "已连接" : "未连接";
@@ -48,6 +55,11 @@ export default function App() {
           <span className="dot" aria-hidden="true" />
           <span>后端 {backendLabel}</span>
           {health ? <code>db: {health.db}</code> : null}
+          {backend === "down" ? (
+            <button type="button" className="retry" onClick={retry}>
+              重试
+            </button>
+          ) : null}
         </div>
 
         <h2>接下来</h2>

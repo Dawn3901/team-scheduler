@@ -37,6 +37,7 @@ def test_unknown_route_uses_error_contract(client: TestClient) -> None:
 
     assert response.status_code == 404
     assert response.json()["code"] == "NOT_FOUND"
+    assert response.json()["message"] == "资源不存在"
     assert set(response.json()) == {"code", "message", "details"}
 
 
@@ -45,4 +46,5 @@ def test_method_not_allowed_uses_error_contract(client: TestClient) -> None:
 
     assert response.status_code == 405
     assert response.json()["code"] == "METHOD_NOT_ALLOWED"
+    assert response.json()["message"] == "请求方法不允许"
     assert response.headers["allow"] == "GET"

@@ -1,6 +1,7 @@
 """统一错误体与异常处理。"""
 
 import logging
+from http import HTTPStatus
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -22,6 +23,19 @@ HTTP_ERROR_CODES = {
     500: "INTERNAL_ERROR",
 }
 
+# HTTPException 的 detail 若仍是框架默认英文，就换成产品可用的中文文案。
+HTTP_ERROR_MESSAGES = {
+    400: "请求参数不合法",
+    401: "请先登录",
+    403: "没有权限",
+    404: "资源不存在",
+    405: "请求方法不允许",
+    409: "资源冲突",
+    422: "请求无法处理",
+    429: "请求过于频繁",
+    500: "服务器内部错误",
+}
+
 
 class ApiError(Exception):
     """业务异常：由路由/服务层抛出，统一序列化为 {code, message, details}。"""
@@ -32,15 +46,28 @@ class ApiError(Exception):
         code: str,
         message: str,
         details: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.status_code = status_code
         self.code = code
         self.message = message
         self.details = details or {}
+        self.headers = headers or {}
 
 
 def error_body(code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"code": code, "message": message, "details": details or {}}
+
+
+def _http_message(status_code: int, detail: Any) -> str:
+    try:
+        default_phrase = HTTPStatus(status_code).phrase
+    except ValueError:
+        default_phrase = None
+
+    if detail is None or (default_phrase is not None and str(detail) == default_phrase):
+        return HTTP_ERROR_MESSAGES.get(status_code, "请求失败")
+    return str(detail)
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -49,6 +76,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             content=error_body(exc.code, exc.message, exc.details),
+            headers=exc.headers or None,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -72,7 +100,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         code = HTTP_ERROR_CODES.get(exc.status_code, "HTTP_ERROR")
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_body(code, str(exc.detail)),
+            content=error_body(code, _http_message(exc.status_code, exc.detail)),
             headers=exc.headers,
         )
 
