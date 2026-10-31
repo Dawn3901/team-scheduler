@@ -6,10 +6,31 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
-# server/app/config.py -> 仓库根目录
+# server/app/config.py -> 仓库根目录 / server 目录
 ROOT_DIR = Path(__file__).resolve().parents[2]
+SERVER_DIR = Path(__file__).resolve().parents[1]
+
+
+def resolve_database_url(raw: str) -> str:
+    """把相对 SQLite 路径固定到 server/，避免随启动目录生成第二个库。"""
+    url = make_url(raw)
+    if not url.drivername.startswith("sqlite"):
+        return raw
+
+    database = url.database
+    if not database or database == ":memory:":
+        return raw
+
+    path = Path(database)
+    if path.is_absolute():
+        return raw
+
+    absolute = (SERVER_DIR / path).resolve()
+    return url.set(database=absolute.as_posix()).render_as_string(hide_password=False)
 
 
 class Settings(BaseSettings):
@@ -27,6 +48,11 @@ class Settings(BaseSettings):
     team_timezone: str = "Asia/Shanghai"
     access_token_expire_days: int = 7
     log_level: str = "INFO"
+
+    @field_validator("database_url")
+    @classmethod
+    def _resolve_database_url(cls, value: str) -> str:
+        return resolve_database_url(value)
 
     @property
     def cors_origin_list(self) -> list[str]:
