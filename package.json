@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter @teamsync/web dev",
     "build": "pnpm --filter @teamsync/web build",
+    "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   }
