@@ -13,6 +13,10 @@ import {
   renderApp,
 } from "./test/utils";
 
+vi.mock("./pages/CalendarPage", () => ({
+  default: () => <h2>日历</h2>,
+}));
+
 beforeEach(() => {
   // 路由测试使用 HTTP mock；实时通道由真实浏览器 E2E 单独验证。
   vi.stubGlobal("WebSocket", undefined);
