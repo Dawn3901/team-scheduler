@@ -169,7 +169,8 @@ describe("teams", () => {
     await user.click(within(form).getByRole("button", { name: "创建团队" }));
 
     expect(await screen.findByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "日历" })).toBeInTheDocument();
+    await vi.dynamicImportSettled();
+    expect(await screen.findByRole("heading", { name: "日历" })).toBeInTheDocument();
     expect(createBody).toEqual({ name: "软工大作业", description: "6 周项目" });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/teams",

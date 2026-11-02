@@ -39,7 +39,13 @@ type FetchHandler = (url: string, init: RequestInit) => Response | Promise<Respo
 
 export function mockFetch(handler: FetchHandler) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(handler(String(input), init ?? {})),
+    Promise.resolve(
+      String(input).startsWith("/api/v1/notifications?")
+        ? jsonResponse({items: [], total: 0, unread_count: 0})
+        : /\/(members|tasks|events)\?/.test(String(input))
+          ? jsonResponse({items: [], total: 0})
+          : handler(String(input), init ?? {}),
+    ),
   );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;

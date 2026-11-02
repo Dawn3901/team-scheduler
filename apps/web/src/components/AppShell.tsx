@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { logout } from "@teamsync/shared";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
+import LiveStatus from "./LiveStatus";
 import { useMe } from "../hooks/useSession";
 
 export function AppShell() {
@@ -32,6 +33,8 @@ export function AppShell() {
             <NavLink to="/app" end>
               我的团队
             </NavLink>
+            <LiveStatus />
+            <NavLink to="/app/profile">个人资料</NavLink>
           </nav>
 
           <div className="header-user">

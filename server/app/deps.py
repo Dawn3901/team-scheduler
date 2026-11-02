@@ -86,3 +86,19 @@ def require_member(
 
 
 MemberContext = Annotated[TeamContext, Depends(require_member)]
+
+
+def require_admin(ctx: MemberContext) -> TeamContext:
+    if ctx.member.role not in ("owner", "admin"):
+        raise ApiError(403, "FORBIDDEN", "需要管理员权限")
+    return ctx
+
+
+def require_owner(ctx: MemberContext) -> TeamContext:
+    if ctx.member.role != "owner":
+        raise ApiError(403, "FORBIDDEN", "需要所有者权限")
+    return ctx
+
+
+AdminContext = Annotated[TeamContext, Depends(require_admin)]
+OwnerContext = Annotated[TeamContext, Depends(require_owner)]

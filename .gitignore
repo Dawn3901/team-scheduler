@@ -9,6 +9,7 @@ __pycache__/
 # SQLite
 server/data/*.db
 server/data/*.db-*
+server/data/backups/
 
 # Node
 node_modules/

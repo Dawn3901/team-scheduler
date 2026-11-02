@@ -7,7 +7,15 @@ import sys
 from pathlib import Path
 
 SERVER_DIR = Path(__file__).resolve().parents[1]
-BUSINESS_TABLES = {"users", "teams", "team_members"}
+BUSINESS_TABLES = {
+    "users",
+    "teams",
+    "team_members",
+    "events",
+    "event_participants",
+    "tasks",
+    "notifications",
+}
 
 
 def _run_alembic(db_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -26,9 +34,7 @@ def _run_alembic(db_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 def _tables(db_path: Path) -> set[str]:
     with sqlite3.connect(db_path) as connection:
-        rows = connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        ).fetchall()
+        rows = connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
     return {row[0] for row in rows}
 
 
@@ -47,12 +53,10 @@ def test_upgrade_head_downgrade_and_upgrade_again(tmp_path: Path) -> None:
     upgrade = _run_alembic(db_path, "upgrade", "head")
     assert upgrade.returncode == 0, upgrade.stderr
     assert BUSINESS_TABLES <= _tables(db_path)
-    assert {"idx_team_members_user", "idx_team_one_owner"} <= _indexes(
-        db_path, "team_members"
-    )
+    assert {"idx_team_members_user", "idx_team_one_owner"} <= _indexes(db_path, "team_members")
     with sqlite3.connect(db_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("0002_w1_db_auth",)
+    assert version == ("e01de950f6a1",)
 
     drift = _run_alembic(db_path, "check")
     assert drift.returncode == 0, drift.stdout + drift.stderr

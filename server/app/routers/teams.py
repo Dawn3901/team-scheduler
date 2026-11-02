@@ -2,18 +2,20 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import CurrentUser, MemberContext
+from app.deps import AdminContext, CurrentUser, MemberContext, OwnerContext
 from app.schemas import (
     TeamCreateRequest,
     TeamJoinRequest,
     TeamListOut,
     TeamMemberListOut,
+    TeamMemberOut,
     TeamOut,
 )
+from app.schemas_work import RoleRequest
 from app.services import teams as team_service
 
 router = APIRouter(prefix="/teams", tags=["teams"])
@@ -64,3 +66,34 @@ def list_members(
     offset: OffsetQuery = 0,
 ) -> TeamMemberListOut:
     return team_service.list_members(db, ctx.team.id, limit=limit, offset=offset)
+
+
+@router.patch("/{team_id}/members/{user_id}", response_model=TeamMemberOut)
+def change_role(ctx: OwnerContext, user_id: int, payload: RoleRequest,
+                db: Annotated[Session, Depends(get_db)]) -> TeamMemberOut:
+    return team_service.change_role(db, ctx.team.id, user_id, payload.role)
+
+
+@router.delete("/{team_id}/members/{user_id}", status_code=204)
+def remove_member(ctx: AdminContext, user_id: int,
+                  db: Annotated[Session, Depends(get_db)]) -> Response:
+    team_service.remove_member(db, ctx.team.id, user_id)
+    return Response(status_code=204)
+
+
+@router.post("/{team_id}/leave", status_code=204)
+def leave_team(ctx: MemberContext, user: CurrentUser,
+               db: Annotated[Session, Depends(get_db)]) -> Response:
+    team_service.remove_member(db, ctx.team.id, user.id)
+    return Response(status_code=204)
+
+
+@router.post("/{team_id}/invite-code/rotate")
+def rotate_code(ctx: AdminContext, db: Annotated[Session, Depends(get_db)]) -> dict:
+    return team_service.rotate_code(db, ctx.team)
+
+
+@router.delete("/{team_id}", status_code=204)
+def delete_team(ctx: OwnerContext, db: Annotated[Session, Depends(get_db)]) -> Response:
+    team_service.delete_team(db, ctx.team)
+    return Response(status_code=204)

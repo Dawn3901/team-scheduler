@@ -784,3 +784,42 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+.work-toolbar, .work-row { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.work-toolbar { margin-bottom:20px; }
+.work-row { padding:18px 0; border-bottom:1px solid var(--line); }
+.work-row p { margin:8px 0 0; }
+.work-form { display:grid; gap:16px; }
+.work-form label, .work-toolbar label { display:grid; gap:8px; }
+.work-form input:not([type=checkbox]):not([type=color]), .work-form select, .work-form textarea, .work-toolbar select { padding:10px; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); max-width:100%; width:100%; font:inherit; }
+.work-form textarea { min-height:80px; }
+.work-form label:has(input[type=checkbox]) { display:flex; align-items:center; }
+.work-form fieldset { display:flex; flex-wrap:wrap; gap:12px; border:1px solid var(--line); border-radius:8px; }
+.modal-backdrop { position:fixed; inset:0; z-index:50; background:#11182780; display:flex; align-items:center; justify-content:center; padding:16px; }
+.work-dialog { background:white; border-radius:16px; box-shadow:var(--shadow); padding:24px; width:560px; max-width:100%; max-height:92vh; overflow:auto; }
+.btn-danger { background:var(--danger); color:white; }
+.danger-text, .overdue strong { color:var(--danger); }
+.done strong { color:#16804a; text-decoration:line-through; }
+.highlight { outline:2px solid var(--accent); padding:16px; border-radius:8px; }
+.notice { text-align:left; width:100%; border:0; border-bottom:1px solid var(--line); background:white; cursor:pointer; font:inherit; }
+.notice.unread { background:var(--accent-soft); padding:16px; }
+.conflict-box { padding:16px; background:var(--warn-soft); border-radius:8px; }
+.toast { position:fixed; right:20px; bottom:24px; z-index:100; padding:20px; background:var(--ink); color:white; border-radius:12px; box-shadow:var(--shadow); max-width:90vw; }
+.toast button { margin-left:20px; }
+.availability-grid { display:flex; gap:16px; overflow-x:auto; }
+.availability-grid article { min-width:160px; flex:1; }
+.busy-block { display:block; width:100%; padding:12px; margin:8px 0; border:1px solid var(--line); border-radius:8px; background:var(--accent-soft); text-align:left; }
+.calendar-scroll { overflow:auto; }
+.rbc-toolbar button { cursor:pointer; }
+@media(max-width:600px) {
+  .work-dialog { max-height:96vh; padding:16px; }
+  .modal-backdrop { padding:8px; }
+  .work-row { align-items:flex-start; }
+  .calendar-panel { padding:12px; }
+  .view-week .rbc-calendar { min-width:760px; }
+  .rbc-toolbar { flex-direction:column; gap:10px; }
+  .rbc-month-view { font-size:11px; }
+  .rbc-event { padding:2px; }
+  .header-nav { flex-wrap:wrap; gap:10px; }
+}
+.work-toolbar label:has(input[type=checkbox]) { display:flex; align-items:center; gap:8px; }

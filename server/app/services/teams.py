@@ -85,6 +85,20 @@ def _to_team_out(db: Session, team: Team, role: str) -> TeamOut:
 
 def create_team(db: Session, user: User, payload: TeamCreateRequest) -> TeamOut:
     """TEAM-1：创建者成为 Owner，同一事务写入 teams 与 team_members。"""
+    if (
+        db.scalar(
+            select(func.count())
+            .select_from(TeamMember)
+            .join(Team)
+            .where(
+                TeamMember.user_id == user.id,
+                TeamMember.status == "active",
+                Team.deleted_at.is_(None),
+            )
+        )
+        >= 20
+    ):
+        raise ApiError(422, "UNPROCESSABLE_ENTITY", "每位用户最多加入 20 个团队")
     name = _clean_name(payload.name)
     description = _clean_description(payload.description)
     team_timezone = get_settings().team_timezone
@@ -187,9 +201,7 @@ def join_team(db: Session, user: User, payload: TeamJoinRequest) -> TeamOut:
     code = payload.invite_code.strip().upper()
     team = None
     if code:
-        team = db.scalar(
-            select(Team).where(Team.invite_code == code, Team.deleted_at.is_(None))
-        )
+        team = db.scalar(select(Team).where(Team.invite_code == code, Team.deleted_at.is_(None)))
     if team is None:
         raise ApiError(409, "INVITE_CODE_INVALID", "邀请码无效或已失效")
 
@@ -202,6 +214,22 @@ def join_team(db: Session, user: User, payload: TeamJoinRequest) -> TeamOut:
     if membership is not None and membership.status == "active":
         return _to_team_out(db, team, membership.role)
 
+    if _count_active_members(db, team.id) >= 50:
+        raise ApiError(422, "UNPROCESSABLE_ENTITY", "团队人数已达 50 人上限")
+    if (
+        db.scalar(
+            select(func.count())
+            .select_from(TeamMember)
+            .join(Team)
+            .where(
+                TeamMember.user_id == user.id,
+                TeamMember.status == "active",
+                Team.deleted_at.is_(None),
+            )
+        )
+        >= 20
+    ):
+        raise ApiError(422, "UNPROCESSABLE_ENTITY", "每位用户最多加入 20 个团队")
     if membership is None:
         db.add(
             TeamMember(
@@ -234,17 +262,13 @@ def join_team(db: Session, user: User, payload: TeamJoinRequest) -> TeamOut:
     return _to_team_out(db, team, membership.role)
 
 
-def list_members(
-    db: Session, team_id: int, *, limit: int, offset: int
-) -> TeamMemberListOut:
+def list_members(db: Session, team_id: int, *, limit: int, offset: int) -> TeamMemberListOut:
     """TEAM-4：返回昵称、角色、加入时间；按角色排序。"""
     active_members = (
         TeamMember.team_id == team_id,
         TeamMember.status == "active",
     )
-    total = (
-        db.scalar(select(func.count(TeamMember.id)).where(*active_members)) or 0
-    )
+    total = db.scalar(select(func.count(TeamMember.id)).where(*active_members)) or 0
     rows = db.execute(
         select(TeamMember, User.display_name)
         .join(User, User.id == TeamMember.user_id)
@@ -264,3 +288,123 @@ def list_members(
         for member, display_name in rows
     ]
     return TeamMemberListOut(items=items, total=total)
+
+
+def rotate_code(db: Session, team: Team) -> dict:
+    for _ in range(_MAX_INVITE_CODE_ATTEMPTS):
+        code = _generate_invite_code()
+        if db.scalar(select(Team.id).where(Team.invite_code == code)) is None:
+            team.invite_code = code
+            try:
+                db.commit()
+                return {"invite_code": code}
+            except IntegrityError:
+                db.rollback()
+    raise ApiError(409, "CONFLICT", "邀请码生成冲突，请重试")
+
+
+def change_role(db: Session, team_id: int, user_id: int, role: str) -> TeamMemberOut:
+    member = _active_member(db, team_id, user_id)
+    if member.role == "owner":
+        raise ApiError(403, "FORBIDDEN", "不能修改所有者角色")
+    member.role = role
+    db.commit()
+    return TeamMemberOut(
+        user_id=user_id,
+        display_name=db.get(User, user_id).display_name,
+        role=role,
+        joined_at=member.joined_at,
+    )
+
+
+def _active_member(db: Session, team_id: int, user_id: int) -> TeamMember:
+    member = db.scalar(
+        select(TeamMember).where(
+            TeamMember.team_id == team_id,
+            TeamMember.user_id == user_id,
+            TeamMember.status == "active",
+        )
+    )
+    if member is None:
+        raise ApiError(404, "NOT_FOUND", "成员不存在")
+    return member
+
+
+def remove_member(db: Session, team_id: int, user_id: int) -> None:
+    from app.models import Event, EventParticipant, Notification, Task
+    from app.services.work import notify, notify_event
+
+    member = _active_member(db, team_id, user_id)
+    if member.role == "owner":
+        raise ApiError(403, "FORBIDDEN", "所有者须先删除团队")
+    tasks = db.scalars(
+        select(Task).where(
+            Task.team_id == team_id,
+            Task.assignee_id == user_id,
+            Task.status != "done",
+            Task.deleted_at.is_(None),
+        )
+    ).all()
+    admins = db.scalars(
+        select(TeamMember.user_id).where(
+            TeamMember.team_id == team_id,
+            TeamMember.status == "active",
+            TeamMember.role.in_(["owner", "admin"]),
+            TeamMember.user_id != user_id,
+        )
+    ).all()
+    for task in tasks:
+        task.assignee_id = None
+        for uid in admins:
+            notify(
+                db,
+                uid,
+                team_id,
+                "task.assigned",
+                "任务待重新指派",
+                {"team_id": team_id, "task_id": task.id},
+            )
+    for event in db.scalars(
+        select(Event).where(
+            Event.team_id == team_id,
+            Event.created_by == user_id,
+            Event.visibility == "private",
+            Event.status == "confirmed",
+            Event.deleted_at.is_(None),
+        )
+    ):
+        event.status = "cancelled"
+        notify_event(db, event, "event.cancelled", user_id)
+    for p in db.scalars(
+        select(EventParticipant)
+        .join(Event)
+        .where(
+            Event.team_id == team_id,
+            EventParticipant.user_id == user_id,
+            EventParticipant.is_organizer.is_(False),
+        )
+    ):
+        p.response, p.responded_at = "declined", None
+    for n in db.scalars(
+        select(Notification).where(
+            Notification.team_id == team_id,
+            Notification.user_id == user_id,
+            Notification.read_at.is_(None),
+        )
+    ):
+        db.delete(n)
+    member.status = "left"
+    # 重入团队不能继承旧的管理员身份。
+    member.role = "member"
+    db.commit()
+
+
+def delete_team(db: Session, team: Team) -> None:
+    from app.models import Notification
+
+    team.deleted_at = now_utc()
+    for n in db.scalars(
+        select(Notification).where(Notification.team_id == team.id, Notification.read_at.is_(None))
+    ):
+        db.delete(n)
+    db.commit()
