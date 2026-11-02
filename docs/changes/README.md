@@ -9,9 +9,9 @@
 | [CR-003](CR-003-external-calendar-import.md) | 外部课表/ICS 导入（可选模块） | **暂缓** | 依赖 CR-002；待真实 ICS 样本 |
 | [CR-004](CR-004-quick-add.md) | 自然语言快速添加（Quick Add） | **待定** | 规则版；个人目标依赖 CR-002 |
 | [CR-005](CR-005-personal-tasks-ddl-import.md) | 个人任务与 DDL 导入 | **暂缓** | 依赖 CR-002；与 CR-003 一起评估 |
-| [CR-006](CR-006-smart-find-free-time.md) | 智能找空闲（AVAIL-6） | **待评审**（建议批准） | 依赖 CR-002（个人 busy 可选） |
-| [CR-007](CR-007-rsvp-reconfirmation.md) | 活动变更重新确认（RSVP-6） | **待评审**（建议批准） | 与 CR-008 交互 |
-| [CR-008](CR-008-recurring-events.md) | 重复活动（EVT-10） | **待评审**（建议暂缓） | 建议 CR-006/007 之后 |
+| [CR-006](CR-006-smart-find-free-time.md) | 智能找空闲（AVAIL-6） | **已批准**（A/B，2026-11-02） | 待排期；建议 CR-002 之后 |
+| [CR-007](CR-007-rsvp-reconfirmation.md) | 活动变更重新确认（RSVP-6） | **已批准**（A/B，2026-11-02） | 待排期；方案 A |
+| [CR-008](CR-008-recurring-events.md) | 重复活动（EVT-10） | **暂缓** | 等 CR-006/007、P0 稳定后再评估 |
 
 ## 未立 CR / 明确暂不做
 
