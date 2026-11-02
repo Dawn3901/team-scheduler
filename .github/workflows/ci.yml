@@ -33,6 +33,40 @@ jobs:
       - name: 迁移
         run: alembic upgrade head
 
+  # Linux 自带 IANA 时区库、允许对打开的文件 rename/unlink；Windows 上
+  # 这两点都会暴露问题（tzdata 缺失、SQLite 备份文件锁），因此单独跑一份。
+  backend-windows:
+    name: 后端（Windows：ruff + pytest + 迁移）
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    env:
+      SECRET_KEY: ci-test-secret
+      DATABASE_URL: sqlite:///./data/ci.db
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: server/pyproject.toml
+
+      - name: 安装依赖
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: 测试
+        run: pytest
+
+      - name: 迁移
+        run: alembic upgrade head
+
   frontend:
     name: 前端（typecheck + lint + test + build）
     runs-on: ubuntu-latest
