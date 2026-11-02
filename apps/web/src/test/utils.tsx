@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { TeamSummary, UserSummary } from "@teamsync/shared";
-import { render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
@@ -39,10 +39,27 @@ type FetchHandler = (url: string, init: RequestInit) => Response | Promise<Respo
 
 export function mockFetch(handler: FetchHandler) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
-    Promise.resolve(handler(String(input), init ?? {})),
+    Promise.resolve(
+      String(input).startsWith("/api/v1/notifications?")
+        ? jsonResponse({items: [], total: 0, unread_count: 0})
+        : /\/(members|tasks|events)\?/.test(String(input))
+          ? jsonResponse({items: [], total: 0})
+          : handler(String(input), init ?? {}),
+    ),
   );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
+}
+
+const clients = new Set<QueryClient>();
+
+// 先卸载 effect，再取消请求/清空缓存，最后恢复 fetch 和 localStorage。
+// 防止上一用例的查询、轮询或异步 401 影响下一用例。
+export async function cleanupApp() {
+  cleanup();
+  await Promise.all([...clients].map(client => client.cancelQueries()));
+  for (const client of clients) client.clear();
+  clients.clear();
 }
 
 export function renderApp(initialEntries: string[] = ["/app"]) {
@@ -53,6 +70,7 @@ export function renderApp(initialEntries: string[] = ["/app"]) {
     },
   });
 
+  clients.add(queryClient);
   const view = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>

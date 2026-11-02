@@ -105,3 +105,97 @@ class TeamMember(Base):
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=now_utc
     )
+
+
+class Event(Base):
+    __tablename__ = "events"
+    __table_args__ = (
+        CheckConstraint("start_at < end_at", name="ck_events_time"),
+        CheckConstraint("visibility IN ('team','private')", name="ck_events_visibility"),
+        CheckConstraint("status IN ('confirmed','cancelled')", name="ck_events_status"),
+        CheckConstraint("all_day IN (0,1)", name="ck_events_all_day"),
+        Index("idx_events_team_start", "team_id", "start_at"),
+        Index("idx_events_team_end", "team_id", "end_at"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(Text)
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    all_day: Mapped[bool] = mapped_column(default=False)
+    location: Mapped[str | None] = mapped_column(String)
+    color: Mapped[str | None] = mapped_column(String)
+    visibility: Mapped[str] = mapped_column(String, default="team")
+    status: Mapped[str] = mapped_column(String, default="confirmed")
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EventParticipant(Base):
+    __tablename__ = "event_participants"
+    __table_args__ = (
+        UniqueConstraint("event_id", "user_id", name="uq_event_participants_event_user"),
+        CheckConstraint(
+            "response IN ('pending','accepted','declined','tentative')",
+            name="ck_participants_response",
+        ),
+        CheckConstraint("is_organizer IN (0,1)", name="ck_participants_organizer"),
+        Index("idx_participants_user", "user_id"),
+        Index("idx_event_one_organizer", "event_id", unique=True,
+              sqlite_where=text("is_organizer = 1")),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    response: Mapped[str] = mapped_column(String, default="pending")
+    is_organizer: Mapped[bool] = mapped_column(default=False)
+    invited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+    __table_args__ = (
+        CheckConstraint("priority IN ('low','normal','high')", name="ck_tasks_priority"),
+        CheckConstraint("status IN ('todo','doing','done')", name="ck_tasks_status"),
+        Index("idx_tasks_team_due", "team_id", "due_at"),
+        Index("idx_tasks_team_assignee", "team_id", "assignee_id", "status"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str | None] = mapped_column(Text)
+    assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    priority: Mapped[str] = mapped_column(String, default="normal")
+    status: Mapped[str] = mapped_column(String, default="todo")
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        UniqueConstraint("dedupe_key", name="uq_notifications_dedupe_key"),
+        Index("idx_notifications_user", "user_id", "read_at", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id", ondelete="SET NULL"))
+    type: Mapped[str] = mapped_column(String)
+    title: Mapped[str] = mapped_column(String)
+    body: Mapped[str | None] = mapped_column(Text)
+    payload_json: Mapped[str | None] = mapped_column(Text)
+    dedupe_key: Mapped[str | None] = mapped_column(String)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)

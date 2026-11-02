@@ -11,8 +11,8 @@ export default defineConfig({
     // 固定 IPv4，避免 Windows 上 localhost 解析到 ::1 时 Electron/E2E 连 127.0.0.1 被拒。
     host: "127.0.0.1",
     proxy: {
-      "/api": { target: apiTarget, changeOrigin: true },
-      "/health": { target: apiTarget, changeOrigin: true },
+      "/api": { target: apiTarget, changeOrigin: true, ws: true },
+      "/health": { target: apiTarget, changeOrigin: true, ws: true },
     },
   },
 });

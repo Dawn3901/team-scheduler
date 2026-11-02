@@ -11,16 +11,20 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from datetime import timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import Team, TeamMember, User, now_utc
+from app.deps import require_member
+from app.models import Event, Task, Team, TeamMember, User, now_utc
 from app.schemas import TeamCreateRequest
+from app.schemas_work import EventCreate, TaskCreate
 from app.security import hash_password, verify_password
 from app.services.teams import create_team
+from app.services.work import create_event, create_task
 
 DEMO_EMAIL_DOMAIN = "teamsync.local"
 DEMO_TEAM_NAME = "软工大作业"
@@ -140,6 +144,56 @@ def seed_demo_data(db: Session, *, password: str) -> SeedResult:
     db.refresh(team)
     for user in users:
         db.refresh(user)
+
+    # 只在演示团队尚无业务数据时补示例，不覆盖已编辑的数据。
+    ctx = require_member(team.id, owner, db)
+    if db.scalar(select(Event.id).where(Event.team_id == team.id).limit(1)) is None:
+        start = now_utc().replace(second=0, microsecond=0) + timedelta(days=1)
+        create_event(
+            db,
+            ctx,
+            owner,
+            EventCreate(
+                title="团队周会",
+                description="讨论分工与进度",
+                start_at=start,
+                end_at=start + timedelta(hours=1),
+                participant_ids=[u.id for u in users[1:]],
+            ),
+        )
+        create_event(
+            db,
+            ctx,
+            owner,
+            EventCreate(
+                title="个人安排",
+                start_at=start + timedelta(hours=2),
+                end_at=start + timedelta(hours=3),
+                visibility="private",
+            ),
+        )
+    if db.scalar(select(Task.id).where(Task.team_id == team.id).limit(1)) is None:
+        create_task(
+            db,
+            ctx,
+            owner,
+            TaskCreate(
+                title="完成概要设计",
+                assignee_id=users[1].id,
+                due_at=now_utc() + timedelta(days=2),
+                priority="high",
+            ),
+        )
+        create_task(
+            db,
+            ctx,
+            owner,
+            TaskCreate(
+                title="补充回归测试",
+                assignee_id=users[2].id,
+                due_at=now_utc() - timedelta(days=1),
+            ),
+        )
 
     return SeedResult(
         users=tuple(users),

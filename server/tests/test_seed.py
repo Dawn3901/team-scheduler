@@ -75,9 +75,7 @@ def test_seed_resets_demo_account_password_and_profile(db: Session) -> None:
     assert verify_password(PASSWORD, lin.password_hash)
 
 
-def test_seed_refuses_to_overwrite_non_demo_account(
-    db: Session, user_factory
-) -> None:
+def test_seed_refuses_to_overwrite_non_demo_account(db: Session, user_factory) -> None:
     user_factory(username="lin", email="real-user@example.com")
 
     with pytest.raises(RuntimeError, match="非演示账号"):
@@ -93,3 +91,17 @@ def test_seed_rejects_short_password(db: Session) -> None:
 
     assert db.scalar(select(func.count()).select_from(User)) == 0
     assert db.scalar(select(func.count()).select_from(Team)) == 0
+
+
+def test_seed_contains_idempotent_example_events_tasks_and_notifications(db: Session) -> None:
+    from app.models import Event, Notification, Task
+
+    seed_demo_data(db, password=PASSWORD)
+    counts = [
+        db.scalar(select(func.count()).select_from(model)) for model in (Event, Task, Notification)
+    ]
+    assert counts[0] >= 2 and counts[1] >= 2 and counts[2] >= 2
+    seed_demo_data(db, password=PASSWORD)
+    assert counts == [
+        db.scalar(select(func.count()).select_from(model)) for model in (Event, Task, Notification)
+    ]

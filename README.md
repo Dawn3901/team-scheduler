@@ -18,9 +18,9 @@ TeamSync 是面向 **3–20 人小团队**的共享日程 + 轻量任务协作�
 |---|---|
 | 静态交互原型（完整界面 + 演示数据） | ✅ 现在可体验 |
 | Web 注册/登录、团队选择/创建/邀请码加入、AppShell | ✅ 可运行（W1-07） |
-| 账号与团队接口 | ✅ 已实现（W1-05/06） |
-| 演示种子 `make seed`（3 用户 + 1 团队） | ✅ 可重复（W1-09） |
-| 日历、活动、RSVP、忙闲、任务、通知 | 🚧 开发中（W2–W4） |
+| 账号与团队接口 | 已实现；含成员角色/移除/退出/轮换邀请码/团队删除 |
+| 演示种子 `make seed`（3 用户 + 1 团队 + 示例活动/任务） | ✅ 可重复（W1-09） |
+| 日历、活动、RSVP、忙闲、任务、通知 | 已接通 server + Web，见 [验证记录](docs/dev/04-server-web验证-2026-11-02.md) |
 | Electron 桌面壳（加载登录页） | ✅ 可打开（W1-08，已冒烟） |
 | Android 壳（加载登录页） | 🟡 已生成，待真机验证（W1-08） |
 | 托盘 / 系统通知 / 本地通知 | 🚧 计划中（W4） |
@@ -283,7 +283,7 @@ Web 需要页面在线；桌面端需要应用在托盘运行；Android 需要�
 - **与 AI 协作的规则**：[AGENTS.md](AGENTS.md)（命令、DoD、改动边界、提交与评审）。
 - **开发文档索引**：[docs/dev/README.md](docs/dev/README.md)。
 
-目标技术栈：FastAPI + SQLAlchemy 2.0 + Alembic + SQLite；React + Vite + TypeScript；Electron；Capacitor 7（Android）。其中 Electron / Capacitor 尚未接入，当前只有 Web 可运行。
+目标技术栈：FastAPI + SQLAlchemy 2.0 + Alembic + SQLite；React + Vite + TypeScript；Electron；Capacitor 7（Android）。Electron / Capacitor 已有壳；本次补齐并自动验证的是 server 与 Web，原生通知仍待实现与真机验证。
 
 ## 文档
 
