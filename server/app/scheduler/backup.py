@@ -1,6 +1,7 @@
 """OPS-4：SQLite 在线一致性备份，按日保留最近七份。"""
 
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -22,8 +23,8 @@ def backup_sqlite(database_url: str, now: datetime | None = None) -> Path | None
     if not target.exists():
         temporary = target.with_suffix(".db.tmp")
         try:
-            with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as src:
-                with sqlite3.connect(temporary) as dest:
+            with closing(sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True)) as src:
+                with closing(sqlite3.connect(temporary)) as dest:
                     src.backup(dest)
             temporary.replace(target)
         finally:

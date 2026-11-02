@@ -6,6 +6,7 @@ import {
   TEAM,
   USER,
   authPayload,
+  cleanupApp,
   errorResponse,
   jsonResponse,
   mockFetch,
@@ -13,10 +14,13 @@ import {
 } from "./test/utils";
 
 beforeEach(() => {
+  // 路由测试使用 HTTP mock；实时通道由真实浏览器 E2E 单独验证。
+  vi.stubGlobal("WebSocket", undefined);
   localStorage.clear();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await cleanupApp();
   vi.unstubAllGlobals();
   localStorage.clear();
 });
@@ -168,8 +172,10 @@ describe("teams", () => {
     await user.type(within(form).getByLabelText("团队描述"), "6 周项目");
     await user.click(within(form).getByRole("button", { name: "创建团队" }));
 
-    expect(await screen.findByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
     await vi.dynamicImportSettled();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
+    });
     expect(await screen.findByRole("heading", { name: "日历" })).toBeInTheDocument();
     expect(createBody).toEqual({ name: "软工大作业", description: "6 周项目" });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -210,7 +216,10 @@ describe("teams", () => {
     expect(within(form).getByLabelText("邀请码")).toHaveValue("AB12CD34");
     await user.click(within(form).getByRole("button", { name: "加入团队" }));
 
-    expect(await screen.findByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
+    await vi.dynamicImportSettled();
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
+    });
     expect(joinBody).toEqual({ invite_code: "AB12CD34" });
   });
 

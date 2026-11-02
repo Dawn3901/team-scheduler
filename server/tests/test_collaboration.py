@@ -381,18 +381,19 @@ def test_removed_private_participant_loses_details_but_decline_can_be_reversed(c
 
 def test_backup_is_consistent_idempotent_and_retains_seven(tmp_path):
     import sqlite3
+    from contextlib import closing
 
     from app.scheduler.backup import backup_sqlite
 
     source = tmp_path / "source.db"
-    with sqlite3.connect(source) as connection:
+    with closing(sqlite3.connect(source)) as connection, connection:
         connection.execute("CREATE TABLE sample (value TEXT)")
         connection.execute("INSERT INTO sample VALUES ('persisted')")
     for day in range(10):
         now = datetime(2026, 11, 1, tzinfo=UTC) + timedelta(days=day)
         target = backup_sqlite(f"sqlite:///{source}", now)
         assert target == backup_sqlite(f"sqlite:///{source}", now)
-        with sqlite3.connect(target) as connection:
+        with closing(sqlite3.connect(target)) as connection:
             assert connection.execute("SELECT value FROM sample").fetchone() == ("persisted",)
     assert len(list((tmp_path / "backups").glob("*.db"))) == 7
 
@@ -449,3 +450,34 @@ def test_team_limit_is_enforced(client, user_factory, team_factory):
         headers={"Authorization": f"Bearer {create_access_token(owner.id, owner.username)}"},
     )
     assert result.status_code == 422
+
+
+def test_backup_closes_connections_before_renaming(tmp_path, monkeypatch):
+    import sqlite3
+    from contextlib import closing
+
+    from app.scheduler import backup
+
+    source = tmp_path / "含空格 backup.db"
+    with closing(sqlite3.connect(source)) as connection, connection:
+        connection.execute("CREATE TABLE sample (id INTEGER)")
+    real_connect = sqlite3.connect
+    real_replace = type(source).replace
+    opened = []
+
+    def connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    def replace(path, target):
+        assert len(opened) == 2
+        for connection in opened:
+            with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+                connection.execute("SELECT 1")
+        return real_replace(path, target)
+
+    monkeypatch.setattr(backup.sqlite3, "connect", connect)
+    monkeypatch.setattr(type(source), "replace", replace)
+    target = backup.backup_sqlite(f"sqlite:///{source}")
+    assert target.is_file()
