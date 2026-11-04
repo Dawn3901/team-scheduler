@@ -95,6 +95,7 @@ make check                      # pytest + vitest + typecheck + lint
 
 # 种子 / 压测
 make seed                       # 3 用户 + 1 团队（可重复）
+make seed-reset                 # 重置演示活动/任务/通知后重建
 python scripts/bench.py         # W5
 
 # 三端
