@@ -60,7 +60,6 @@ export default function EventEditor({teamId, timezone, members, current, initial
       <label>活动颜色<input type="color" name="color" defaultValue={current?.color || "#4f46e5"} /></label>
       <label>可见性<select name="visibility" defaultValue={current?.visibility || "team"}><option value="team">团队可见</option><option value="private">私密（仅组织者和参与者）</option></select></label>
       <fieldset><legend>邀请成员</legend>{members.map(m => <label key={m.user_id}><input name="participants" type="checkbox" value={m.user_id} disabled={current?.participants.some(p => p.user_id === m.user_id)} defaultChecked={current?.participants.some(p => p.user_id === m.user_id)} />{m.display_name}</label>)}</fieldset>
-      {action.error && <p role="alert">{action.error}</p>}
       {!!conflicts.length && <section role="alert" className="conflict-box"><h4>时间冲突</h4>{conflicts.map((c,i) => <p key={i}>{c.display_name}：{c.title || "忙碌"} · {localInput(c.start_at,timezone).replace("T"," ")}</p>)}<button type="button" className="btn btn-danger" disabled={action.pending} onClick={() => {if(retry) void action.run(retry).catch(() => {});}}>仍然{current ? "保存" : "创建"}</button><button type="button" className="btn btn-secondary" onClick={() => {setConflicts([]); setRetry(null);}}>修改时间</button></section>}
       <div className="panel-actions"><button className="btn btn-primary" disabled={action.pending}>保存活动</button><button type="button" className="btn btn-secondary" onClick={onClose}>取消</button></div>
     </form>

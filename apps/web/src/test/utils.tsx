@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
 import App from "../App";
+import { ToastProvider } from "../components/ToastProvider";
 
 export const USER: UserSummary = {
   id: 1,
@@ -74,7 +75,9 @@ export function renderApp(initialEntries: string[] = ["/app"]) {
   const view = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </MemoryRouter>
     </QueryClientProvider>,
   );
