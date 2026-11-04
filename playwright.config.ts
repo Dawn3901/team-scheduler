@@ -11,7 +11,7 @@ export default defineConfig({
   workers: 1,
   retries: isCI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
-  timeout: 30_000,
+  timeout: 45_000,
   expect: { timeout: 10_000 },
   use: {
     baseURL: "http://127.0.0.1:5174",

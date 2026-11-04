@@ -121,6 +121,7 @@ test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
   await expect(page.getByRole("dialog")).toBeHidden();
 
   const chip = page.locator(".rbc-event").filter({hasText:title});
+  await page.getByRole("button",{name:"月",exact:true}).click();
   const next = page.getByRole("button",{name:"下一页",exact:true});
   const prev = page.getByRole("button",{name:"上一页",exact:true});
 

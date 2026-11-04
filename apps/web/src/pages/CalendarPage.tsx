@@ -17,7 +17,7 @@ export default function CalendarPage() {
   const id = Number(useParams().teamId); const team = useTeam(id).data; const me = useMe().data;
   const zone = team?.timezone || "Asia/Shanghai";
   const [date,setDate] = useState(() => localInput(new Date().toISOString(),zone).slice(0,10));
-  const [view,setView] = useState<"month"|"week"|"day">("month");
+  const [view,setView] = useState<"month"|"week"|"day">("week");
   const [member,setMember] = useState(""); const [busy,setBusy] = useState(true);
   const [initial,setInitial] = useState<string | null>(null); const navigate = useNavigate();
   const days = dateRange(date,view); const from = toUtc(`${days[0]}T00:00`,zone);
@@ -65,7 +65,7 @@ export default function CalendarPage() {
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
         events={items}
         backgroundEvents={busy ? (availability.data?.members || []).flatMap(m => m.blocks.map((b,i) => ({id:`busy-${m.user_id}-${i}`, title:`${m.display_name} · ${b.title || "忙碌"}`,start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:b.all_day,color:"#64748b"}))) : []}
-        startAccessor="start" endAccessor="end" selectable popup
+        startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1} scrollToTime={new Date(`${date}T08:00`)}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
