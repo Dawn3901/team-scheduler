@@ -5,19 +5,20 @@ import { zhCN } from "date-fns/locale";
 import { useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
 interface Item { id:string; title:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; }
+
 export default function CalendarPage() {
   const id = Number(useParams().teamId); const team = useTeam(id).data; const me = useMe().data;
   const zone = team?.timezone || "Asia/Shanghai";
   const [date,setDate] = useState(() => localInput(new Date().toISOString(),zone).slice(0,10));
   const [view,setView] = useState<"month"|"week"|"day">("month");
-  const [member,setMember] = useState(""); const [busy,setBusy] = useState(false);
+  const [member,setMember] = useState(""); const [busy,setBusy] = useState(true);
   const [initial,setInitial] = useState<string | null>(null); const navigate = useNavigate();
   const days = dateRange(date,view); const from = toUtc(`${days[0]}T00:00`,zone);
   const to = toUtc(`${shiftDate(days[days.length-1],1)}T00:00`,zone);
@@ -34,24 +35,71 @@ export default function CalendarPage() {
     }),
   ],[events.data,tasks.data,member,zone]);
   const error = events.error || tasks.error || members.error || (busy && availability.error);
-  return <section className="panel calendar-panel"><div className="work-toolbar"><h2>日历</h2><button className="btn btn-primary" onClick={() => setInitial(toUtc(`${date}T09:00`,zone))}>新建活动</button></div>
-    <div className="work-toolbar"><label>成员筛选<select value={member} onChange={e => setMember(e.target.value)}><option value="">全部成员</option><option value={me?.id}>仅我 / 我的活动</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label><label><input type="checkbox" checked={busy} onChange={e => setBusy(e.target.checked)} />显示周忙闲</label><span className="muted">{zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span></div>
-    {!!error && <p role="alert">{friendlyMessage(error)} <button onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
-    {events.isPending && <p>日历加载中…</p>}
-    <div className={`calendar-scroll view-${view}`}><Calendar<Item>
-      localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
-      events={items}
-      backgroundEvents={busy ? (availability.data?.members || []).flatMap(m => m.blocks.map((b,i) => ({id:`busy-${m.user_id}-${i}`, title:`${m.display_name} · ${b.title || "忙碌"}`,start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:b.all_day,color:"#64748b"}))) : []}
-      startAccessor="start" endAccessor="end" selectable popup
-      onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
-      onView={v => setView(v as View as typeof view)}
-      onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
-      onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`)}
-      eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:item.color}})}
-      messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
-      style={{height:700}}
-    /></div>
-    {busy && <section><h3>本周成员忙闲</h3>{availability.isPending && <p>忙闲加载中…</p>}<div className="availability-grid">{availability.data?.members.map(m => <article key={m.user_id}><h4>{m.display_name}</h4>{!m.blocks.length && <p className="muted">本周暂无安排</p>}{m.blocks.map((b,i) => <button className="busy-block" key={i} onClick={() => {if(b.event_id) navigate(`/app/teams/${id}/events/${b.event_id}`);}}>{b.title || "忙碌"}<br/>{b.all_day ? "全天" : `${formatTime(b.start_at,zone)} — ${formatTime(b.end_at,zone)}`}</button>)}</article>)}</div></section>}
+  const visibleEvents = events.data?.items ?? [];
+  const invites = visibleEvents.filter(e => e.status === "confirmed" && e.my_response === "pending");
+  const taskItems = tasks.data?.items ?? [];
+  const openTasks = taskItems.filter(t => t.status !== "done").length;
+  const monthLabel = format(new Date(`${date}T12:00`), "yyyy年M月", {locale:zhCN});
+  const todayLabel = format(new Date(), "M月d日 EEEE", {locale:zhCN});
+
+  return <section className="calendar-page">
+    <div className="calendar-card">
+      <div className="calendar-head">
+        <div>
+          <p className="eyebrow">团队空间</p>
+          <h2>团队日历</h2>
+          <p>{monthLabel} · {visibleEvents.length} 个活动 · {members.data?.items.length ?? 0} 位成员</p>
+        </div>
+        <div className="calendar-tools">
+          <button className="btn btn-primary" onClick={() => setInitial(toUtc(`${date}T09:00`,zone))}>新建活动</button>
+        </div>
+      </div>
+      <div className="calendar-filterbar">
+        <label>成员筛选<select value={member} onChange={e => setMember(e.target.value)}><option value="">全部成员</option><option value={me?.id}>仅我 / 我的活动</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
+        <label><input type="checkbox" checked={busy} onChange={e => setBusy(e.target.checked)} />显示周忙闲</label>
+        <span className="calendar-legend">{zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span>
+      </div>
+      {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
+      {events.isPending && <p className="calendar-loading">日历加载中…</p>}
+      <div className={`calendar-scroll view-${view}`}><Calendar<Item>
+        localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
+        events={items}
+        backgroundEvents={busy ? (availability.data?.members || []).flatMap(m => m.blocks.map((b,i) => ({id:`busy-${m.user_id}-${i}`, title:`${m.display_name} · ${b.title || "忙碌"}`,start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:b.all_day,color:"#64748b"}))) : []}
+        startAccessor="start" endAccessor="end" selectable popup
+        onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
+        onView={v => setView(v as View as typeof view)}
+        onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
+        onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`)}
+        eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:item.color}})}
+        messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
+        style={{height:700}}
+      /></div>
+    </div>
+
+    <aside className="calendar-side">
+      <section className="side-card today-card">
+        <p className="side-eyebrow">今天 · 演示日</p>
+        <h2>{todayLabel}</h2>
+        <p>{visibleEvents.length} 个活动 · {openTasks} 个待办</p>
+        <button className="btn btn-sm today-button" onClick={() => setDate(localInput(new Date().toISOString(),zone).slice(0,10))}>查看今日 →</button>
+      </section>
+
+      <section className="side-card">
+        <div className="side-card-head"><h3>待回应邀请 <span className="side-count">{invites.length}</span></h3><Link to="/app/notifications">通知中心</Link></div>
+        {invites.length === 0 ? <p className="side-empty">暂无待回应邀请</p> : invites.slice(0, 3).map(e => <Link className="side-invite" key={e.id} to={`/app/teams/${id}/events/${e.id}`}><span className="side-invite-icon">邀</span><span><strong>{e.title}</strong><small>{formatTime(e.start_at, zone)}</small></span></Link>)}
+      </section>
+
+      <section className="side-card">
+        <div className="side-card-head"><h3>本周任务 <span className="side-count">{taskItems.length}</span></h3><Link to={`/app/teams/${id}/tasks`}>看板</Link></div>
+        {taskItems.length === 0 ? <p className="side-empty">本周暂无任务</p> : taskItems.slice(0, 4).map(t => <Link className="side-task" key={t.id} to={`/app/teams/${id}/tasks?task=${t.id}`}><span className={`side-status ${t.status}${t.overdue ? " overdue" : ""}`} aria-hidden="true" /><span><strong>{t.title}</strong><small>{formatTime(t.due_at, zone)}</small></span></Link>)}
+      </section>
+
+      <section className="side-card">
+        <div className="side-card-head"><h3>本周成员忙闲</h3><span className="side-count">{members.data?.items.length ?? 0} 人</span></div>
+        {busy ? (availability.isPending ? <p className="side-empty">忙闲加载中…</p> : (availability.data?.members || []).map(m => <div className="busy-row" key={m.user_id}><span>{m.display_name}</span><span className="busy-track"><span style={{width:`${Math.min(100, m.blocks.length * 22)}%`}} /></span><small>{m.blocks.length ? `${m.blocks.length} 段` : "空闲"}</small></div>)) : <p className="side-empty">勾选“显示周忙闲”查看</p>}
+      </section>
+    </aside>
+
     {initial && <EventEditor teamId={id} timezone={zone} members={members.data?.items || []} initial={initial} onClose={() => setInitial(null)} />}
   </section>;
 }

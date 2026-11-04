@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/ToastProvider";
 import { createQueryClient } from "./lib/queryClient";
 import "./styles.css";
+import "./demo-parity.css";
 
 const container = document.getElementById("root");
 if (!container) {

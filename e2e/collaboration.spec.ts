@@ -10,7 +10,7 @@ async function setup(page: Page) {
   await page.getByRole("button",{name:"创建团队"}).click();
   await page.getByLabel("团队名称").fill(`协作测试${suffix}`);
   await page.getByRole("form",{name:"创建团队表单"}).getByRole("button",{name:"创建团队"}).click();
-  await expect(page.getByRole("heading",{name:"日历",exact:true})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"团队日历",exact:true})).toBeVisible();
   const base = page.url().replace(/\/calendar$/,"");
   return {base, suffix, code: (await page.locator(".invite-code").textContent())!.trim()};
 }
@@ -25,7 +25,7 @@ async function joinAs(browser: Browser, code: string, username: string, displayN
   await guest.getByRole("button",{name:"用邀请码加入"}).click();
   await guest.getByLabel("邀请码",{exact:true}).fill(code);
   await guest.getByRole("button",{name:"加入团队",exact:true}).click();
-  await expect(guest.getByRole("heading",{name:"日历",exact:true})).toBeVisible();
+  await expect(guest.getByRole("heading",{name:"团队日历",exact:true})).toBeVisible();
   return guest;
 }
 
@@ -165,7 +165,7 @@ test("忙闲 → 冲突提示 → 强制保存 → 活动取消",async ({page}) 
 
 test("任务指派 → 完成 → 日历截止 → 重开与删除",async ({page}) => {
   const {base} = await setup(page);
-  await page.getByRole("link",{name:"任务",exact:true}).click();
+  await page.getByRole("link",{name:"任务看板",exact:true}).click();
   await page.getByRole("button",{name:"新建任务",exact:true}).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("任务标题").fill("完成设计文档");
@@ -231,7 +231,7 @@ test("断网恢复后重新连接并刷新",async ({page,context}) => {
   await context.setOffline(true);
   await expect(page.getByText("连接已断开，正在重连…")).toBeVisible();
   await context.setOffline(false);
-  await expect(page.getByRole("heading",{name:"日历",exact:true})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"团队日历",exact:true})).toBeVisible();
   await expect(page.getByText("连接已断开，正在重连…")).toBeHidden();
   await page.screenshot({path:"debug/calendar-desktop.png",fullPage:true});
   await page.setViewportSize({width:375,height:812});
