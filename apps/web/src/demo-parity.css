@@ -1474,3 +1474,20 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Private busy blocks: striped, no title text; public events are already rendered separately. */
+.rbc-background-event {
+  border: 0 !important;
+  background: repeating-linear-gradient(
+    135deg,
+    rgb(100 116 139 / 18%) 0 6px,
+    rgb(100 116 139 / 7%) 6px 12px
+  ) !important;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+.rbc-background-event .rbc-event-content,
+.rbc-background-event .rbc-event-label {
+  display: none;
+}

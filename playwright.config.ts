@@ -14,7 +14,7 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: "http://127.0.0.1:5174",
+    baseURL: "http://127.0.0.1:5180",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -29,8 +29,8 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
-      command: "pnpm --filter @teamsync/web dev --host 127.0.0.1 --port 5174",
-      url: "http://127.0.0.1:5174",
+      command: "pnpm --filter @teamsync/web dev --host 127.0.0.1 --port 5180",
+      url: "http://127.0.0.1:5180",
       timeout: 120_000,
       reuseExistingServer: false,
       env: { VITE_API_TARGET: "http://127.0.0.1:8010" },

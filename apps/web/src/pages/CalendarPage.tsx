@@ -64,7 +64,7 @@ export default function CalendarPage() {
       <div className={`calendar-scroll view-${view}`}><Calendar<Item>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
         events={items}
-        backgroundEvents={busy ? (availability.data?.members || []).flatMap(m => m.blocks.map((b,i) => ({id:`busy-${m.user_id}-${i}`, title:`${m.display_name} · ${b.title || "忙碌"}`,start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:b.all_day,color:"#64748b"}))) : []}
+        backgroundEvents={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null).map((b,i) => ({id:`busy-${m.user_id}-${i}`, title:"忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:b.all_day,color:"#64748b"}))) : []}
         startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1} scrollToTime={new Date(`${date}T08:00`)}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}

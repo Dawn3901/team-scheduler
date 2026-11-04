@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 
 async function setup(page: Page) {
   const suffix = `${Date.now()}${Math.random().toString(36).slice(2,6)}`;
@@ -61,6 +61,19 @@ async function respond(page: Page, title: string, response: "接受" | "拒绝" 
   await page.getByRole("button").filter({hasText:title}).click();
   await expect(page.getByRole("heading",{name:title})).toBeVisible();
   await page.getByRole("button",{name:response,exact:true}).click();
+}
+
+async function untilVisible(button: Locator, target: Locator, max = 8) {
+  for (let i = 0; i < max; i += 1) {
+    if (await target.first().isVisible().catch(() => false)) return;
+    await button.click();
+    try {
+      await target.first().waitFor({ state: "visible", timeout: 1500 });
+      return;
+    } catch {
+      // 当前视图还没加载到目标，继续翻页。
+    }
+  }
 }
 
 test("建活动 → 成员收到通知 → RSVP → 组织者实时刷新",async ({browser,page}) => {
@@ -126,7 +139,7 @@ test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
   const prev = page.getByRole("button",{name:"上一页",exact:true});
 
   // 月视图：开始月与结束月都要有段。
-  await next.click();
+  await untilVisible(next, chip, 6);
   await expect(chip.first()).toBeVisible();
   await next.click();
   await expect(chip.first()).toBeVisible();
@@ -134,12 +147,12 @@ test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
 
   // 周视图：从开始月向后找包含活动的周。
   await page.getByRole("button",{name:"周",exact:true}).click();
-  for(let i=0;i<6 && !(await chip.first().isVisible().catch(() => false));i++) await next.click();
+  await untilVisible(next, chip, 6);
   await expect(chip.first()).toBeVisible();
 
   // 日视图：从活动周向后找到活动覆盖的当天。
   await page.getByRole("button",{name:"日",exact:true}).click();
-  for(let i=0;i<7 && !(await chip.first().isVisible().catch(() => false));i++) await next.click();
+  await untilVisible(next, chip, 7);
   await expect(chip.first()).toBeVisible();
 });
 
