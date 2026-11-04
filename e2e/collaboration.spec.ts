@@ -29,13 +29,27 @@ async function joinAs(browser: Browser, code: string, username: string, displayN
   return guest;
 }
 
-async function addEvent(page: Page, title: string, participants: string | string[] = []) {
+interface EventOptions {
+  start?: string;
+  end?: string;
+  allDay?: boolean;
+}
+
+async function addEvent(
+  page: Page,
+  title: string,
+  participants: string | string[] = [],
+  options: EventOptions = {},
+) {
   const names = Array.isArray(participants) ? participants : [participants];
+  const start = options.start ?? "2028-11-02T14:00";
+  const end = options.end ?? "2028-11-02T15:00";
   await page.getByRole("button",{name:"新建活动",exact:true}).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("活动标题").fill(title);
-  await dialog.getByLabel("开始时间").fill("2028-11-02T14:00");
-  await dialog.getByLabel("结束时间").fill("2028-11-02T15:00");
+  if(options.allDay) await dialog.getByLabel("全天活动").check();
+  await dialog.locator('input[name="start"]').fill(options.allDay ? start.slice(0,10) : start);
+  await dialog.locator('input[name="end"]').fill(options.allDay ? end.slice(0,10) : end);
   for(const name of names) await dialog.getByLabel(name,{exact:true}).check();
   const response = page.waitForResponse(r => r.url().includes("/events") && r.request().method() === "POST");
   await dialog.getByRole("button",{name:"保存活动"}).click();
@@ -79,6 +93,53 @@ test("B 接受、C 拒绝，组织者看到两种状态",async ({browser,page}) 
   await expect(page.locator(".work-row").filter({hasText:"受邀成员C"})).toContainText("拒绝");
   await guestB.close();
   await guestC.close();
+});
+
+test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
+  await setup(page);
+  const range = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const value = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0);
+    const year = value("year");
+    const month = value("month");
+    // 下个月最后一天 22:00 → 再 +2 天 02:00，确保跨月、跨天。
+    const start = new Date(Date.UTC(year, month + 1, 0));
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 2);
+    const fmt = (date: Date) =>
+      `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2,"0")}-${String(date.getUTCDate()).padStart(2,"0")}`;
+    return {start: fmt(start), end: fmt(end)};
+  });
+
+  const title = "跨月多日活动";
+  await addEvent(page,title,[],{start:`${range.start}T22:00`, end:`${range.end}T02:00`});
+  await expect(page.getByRole("dialog")).toBeHidden();
+
+  const chip = page.locator(".rbc-event").filter({hasText:title});
+  const next = page.getByRole("button",{name:"下一页",exact:true});
+  const prev = page.getByRole("button",{name:"上一页",exact:true});
+
+  // 月视图：开始月与结束月都要有段。
+  await next.click();
+  await expect(chip.first()).toBeVisible();
+  await next.click();
+  await expect(chip.first()).toBeVisible();
+  await prev.click();
+
+  // 周视图：从开始月向后找包含活动的周。
+  await page.getByRole("button",{name:"周",exact:true}).click();
+  for(let i=0;i<6 && !(await chip.first().isVisible().catch(() => false));i++) await next.click();
+  await expect(chip.first()).toBeVisible();
+
+  // 日视图：从活动周向后找到活动覆盖的当天。
+  await page.getByRole("button",{name:"日",exact:true}).click();
+  for(let i=0;i<7 && !(await chip.first().isVisible().catch(() => false));i++) await next.click();
+  await expect(chip.first()).toBeVisible();
 });
 
 test("忙闲 → 冲突提示 → 强制保存 → 活动取消",async ({page}) => {
