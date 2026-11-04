@@ -1491,3 +1491,12 @@ body {
 .rbc-background-event .rbc-event-label {
   display: none;
 }
+
+.private-busy-note {
+  margin: 10px 22px 0;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10.5px;
+}

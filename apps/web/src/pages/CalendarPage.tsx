@@ -39,6 +39,10 @@ export default function CalendarPage() {
   const invites = visibleEvents.filter(e => e.status === "confirmed" && e.my_response === "pending");
   const taskItems = tasks.data?.items ?? [];
   const openTasks = taskItems.filter(t => t.status !== "done").length;
+  const privateBlocks = (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null).map(b => ({ ...b, memberName: m.display_name })));
+  const uniquePrivate = (blocks: typeof privateBlocks) => Array.from(new Map(blocks.map(b => [`${b.start_at}-${b.end_at}`, b])).values());
+  const privateAllDay = uniquePrivate(privateBlocks.filter(b => b.all_day));
+  const privateTimed = uniquePrivate(privateBlocks.filter(b => !b.all_day));
   const monthLabel = format(new Date(`${date}T12:00`), "yyyy年M月", {locale:zhCN});
   const todayLabel = format(new Date(), "M月d日 EEEE", {locale:zhCN});
 
@@ -57,14 +61,15 @@ export default function CalendarPage() {
       <div className="calendar-filterbar">
         <label>成员筛选<select value={member} onChange={e => setMember(e.target.value)}><option value="">全部成员</option><option value={me?.id}>仅我 / 我的活动</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
         <label><input type="checkbox" checked={busy} onChange={e => setBusy(e.target.checked)} />显示周忙闲</label>
-        <span className="calendar-legend">{zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span>
+        <span className="calendar-legend">斜纹 = 私密忙碌 · {zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span>
       </div>
+      {privateAllDay.length > 0 ? <p className="private-busy-note">有 {privateAllDay.length} 个全天私密忙碌，仅计入右侧统计，不在时间轴显示标题。</p> : null}
       {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
       {events.isPending && <p className="calendar-loading">日历加载中…</p>}
       <div className={`calendar-scroll view-${view}`}><Calendar<Item>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
         events={items}
-        backgroundEvents={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null).map((b,i) => ({id:`busy-${m.user_id}-${i}`, title:"忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:b.all_day,color:"#64748b"}))) : []}
+        backgroundEvents={busy ? privateTimed.map((b,i) => ({id:`busy-${b.memberName}-${i}`, title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b"})) : []}
         startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1} scrollToTime={new Date(`${date}T08:00`)}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
