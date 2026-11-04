@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 
 async function setup(page: Page) {
   const suffix = `${Date.now()}${Math.random().toString(36).slice(2,6)}`;
@@ -14,37 +14,48 @@ async function setup(page: Page) {
   const base = page.url().replace(/\/calendar$/,"");
   return {base, suffix, code: (await page.locator(".invite-code").textContent())!.trim()};
 }
-async function addEvent(page: Page, title: string, participant?: string) {
-  await page.getByRole("button",{name:"新建活动",exact:true}).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("活动标题").fill(title);
-  await dialog.getByLabel("开始时间").fill("2028-11-02T14:00");
-  await dialog.getByLabel("结束时间").fill("2028-11-02T15:00");
-  if(participant) await dialog.getByLabel(participant,{exact:true}).check();
-  const response = page.waitForResponse(r => r.url().includes("/events") && r.request().method() === "POST");
-  await dialog.getByRole("button",{name:"保存活动"}).click();
-  return (await response).json();
-}
 
-test("建活动 → 成员收到通知 → RSVP → 组织者实时刷新",async ({browser,page}) => {
-  const {base,suffix,code} = await setup(page);
+async function joinAs(browser: Browser, code: string, username: string, displayName: string) {
   const guest = await browser.newPage();
   await guest.goto("/register");
-  await guest.getByLabel("用户名").fill(`guest_${suffix}`);
-  await guest.getByLabel("显示名").fill("受邀成员");
+  await guest.getByLabel("用户名").fill(username);
+  await guest.getByLabel("显示名").fill(displayName);
   await guest.getByLabel("密码").fill("e2e-correct-horse");
   await guest.getByRole("button",{name:"注册并登录"}).click();
   await guest.getByRole("button",{name:"用邀请码加入"}).click();
   await guest.getByLabel("邀请码",{exact:true}).fill(code);
   await guest.getByRole("button",{name:"加入团队",exact:true}).click();
   await expect(guest.getByRole("heading",{name:"日历",exact:true})).toBeVisible();
+  return guest;
+}
+
+async function addEvent(page: Page, title: string, participants: string | string[] = []) {
+  const names = Array.isArray(participants) ? participants : [participants];
+  await page.getByRole("button",{name:"新建活动",exact:true}).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("活动标题").fill(title);
+  await dialog.getByLabel("开始时间").fill("2028-11-02T14:00");
+  await dialog.getByLabel("结束时间").fill("2028-11-02T15:00");
+  for(const name of names) await dialog.getByLabel(name,{exact:true}).check();
+  const response = page.waitForResponse(r => r.url().includes("/events") && r.request().method() === "POST");
+  await dialog.getByRole("button",{name:"保存活动"}).click();
+  return (await response).json();
+}
+
+async function respond(page: Page, title: string, response: "接受" | "拒绝" | "待定") {
+  await page.getByRole("link",{name:/通知 \(/}).click();
+  await page.getByRole("button").filter({hasText:title}).click();
+  await expect(page.getByRole("heading",{name:title})).toBeVisible();
+  await page.getByRole("button",{name:response,exact:true}).click();
+}
+
+test("建活动 → 成员收到通知 → RSVP → 组织者实时刷新",async ({browser,page}) => {
+  const {base,suffix,code} = await setup(page);
+  const guest = await joinAs(browser, code, `guest_${suffix}`, "受邀成员");
   await expect(page.getByText("团队空间 · 2 位成员")).toBeVisible();
   await addEvent(page,"讨论分工","受邀成员");
   await expect(page.getByRole("dialog")).toBeHidden();
-  await guest.getByRole("link",{name:/通知 \(/}).click();
-  await guest.getByRole("button").filter({hasText:"讨论分工"}).click();
-  await expect(guest.getByRole("heading",{name:"讨论分工"})).toBeVisible();
-  await guest.getByRole("button",{name:"接受",exact:true}).click();
+  await respond(guest,"讨论分工","接受");
   const eventUrl = guest.url();
   await page.goto(eventUrl);
   await expect(page.locator(".work-row").filter({hasText:"受邀成员"})).toContainText("接受");
@@ -52,6 +63,22 @@ test("建活动 → 成员收到通知 → RSVP → 组织者实时刷新",async
   await expect(page.locator(".work-row").filter({hasText:"受邀成员"})).toContainText("待定");
   await guest.close();
   await page.goto(base+"/calendar");
+});
+
+test("B 接受、C 拒绝，组织者看到两种状态",async ({browser,page}) => {
+  const {base,suffix,code} = await setup(page);
+  const guestB = await joinAs(browser, code, `guest_b_${suffix}`, "受邀成员B");
+  const guestC = await joinAs(browser, code, `guest_c_${suffix}`, "受邀成员C");
+  await expect(page.getByText("团队空间 · 3 位成员")).toBeVisible();
+  const event = await addEvent(page,"双人 RSVP 活动",["受邀成员B","受邀成员C"]);
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await respond(guestB,"双人 RSVP 活动","接受");
+  await respond(guestC,"双人 RSVP 活动","拒绝");
+  await page.goto(`${base}/events/${event.id}`);
+  await expect(page.locator(".work-row").filter({hasText:"受邀成员B"})).toContainText("接受");
+  await expect(page.locator(".work-row").filter({hasText:"受邀成员C"})).toContainText("拒绝");
+  await guestB.close();
+  await guestC.close();
 });
 
 test("忙闲 → 冲突提示 → 强制保存 → 活动取消",async ({page}) => {
