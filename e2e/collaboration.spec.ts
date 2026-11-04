@@ -188,6 +188,29 @@ test("任务指派 → 完成 → 日历截止 → 重开与删除",async ({page
 });
 
 
+test("375px 周视图在日历容器内横滑，不撑破页面",async ({page}) => {
+  const {base} = await setup(page);
+  await page.setViewportSize({width:375,height:812});
+  await page.goto(base+"/calendar");
+  await page.getByRole("button",{name:"周",exact:true}).click();
+  await expect(page.locator(".rbc-time-view")).toBeVisible();
+
+  const before = await page.locator(".calendar-scroll").evaluate(el => {
+    const box = el as HTMLElement;
+    return {
+      canScroll: box.scrollWidth > box.clientWidth + 1,
+      pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
+    };
+  });
+  expect(before.canScroll).toBe(true);
+  expect(before.pageOverflow).toBe(false);
+
+  await page.locator(".calendar-scroll").evaluate(el => {
+    (el as HTMLElement).scrollLeft = (el as HTMLElement).scrollWidth;
+  });
+  expect(await page.locator(".calendar-scroll").evaluate(el => (el as HTMLElement).scrollLeft)).toBeGreaterThan(0);
+});
+
 test("资料保存、邀请码轮换和团队删除",async ({page}) => {
   const {base,code} = await setup(page);
   await page.getByRole("link",{name:"个人资料",exact:true}).click();
