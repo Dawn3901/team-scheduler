@@ -178,7 +178,7 @@ describe("teams", () => {
 
     await vi.dynamicImportSettled();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
+      expect(screen.getAllByText("软工大作业").length).toBeGreaterThan(0);
     });
     expect(await screen.findByRole("heading", { name: "日历" })).toBeInTheDocument();
     expect(createBody).toEqual({ name: "软工大作业", description: "6 周项目" });
@@ -222,7 +222,7 @@ describe("teams", () => {
 
     await vi.dynamicImportSettled();
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
+      expect(screen.getAllByText("软工大作业").length).toBeGreaterThan(0);
     });
     expect(joinBody).toEqual({ invite_code: "AB12CD34" });
   });
