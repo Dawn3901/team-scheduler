@@ -1,27 +1,38 @@
 """W1-09/W2-07：可重复的演示种子（3 用户 + 1 团队 + 5 活动 + 2 任务）。
 
-用法：make seed（先 alembic upgrade head，再 python -m app.seed）
+用法：make seed（幂等补齐）；make seed-reset（先删演示业务数据再重建）
 约束：
 - 密码来自 .env 的 SEED_PASSWORD，不写死在代码里；
 - 重复执行不产生重复用户/团队/成员/演示活动；
 - 演示活动按标题补齐；RSVP 每次归一到演示分布，不覆盖活动时间/标题；
+- --reset 只删除演示团队的活动/任务/通知，不删除账号、团队和邀请码；
 - 演示账号带 @teamsync.local 邮箱标记，遇到同名真实账号时拒绝覆盖。
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import SessionLocal
 from app.deps import TeamContext, require_member
-from app.models import Event, EventParticipant, Task, Team, TeamMember, User, now_utc
+from app.models import (
+    Event,
+    EventParticipant,
+    Notification,
+    Task,
+    Team,
+    TeamMember,
+    User,
+    now_utc,
+)
 from app.schemas import TeamCreateRequest
 from app.schemas_work import EventCreate, TaskCreate
 from app.security import hash_password, verify_password
@@ -256,7 +267,17 @@ def _ensure_demo_events(
         db.commit()
 
 
-def seed_demo_data(db: Session, *, password: str) -> SeedResult:
+def _reset_demo_business_data(db: Session, team_id: int) -> None:
+    """--reset 只清演示团队的演示业务数据，保留账号、团队和邀请码。"""
+    event_ids = select(Event.id).where(Event.team_id == team_id)
+    db.execute(delete(EventParticipant).where(EventParticipant.event_id.in_(event_ids)))
+    db.execute(delete(Event).where(Event.team_id == team_id))
+    db.execute(delete(Task).where(Task.team_id == team_id))
+    db.execute(delete(Notification).where(Notification.team_id == team_id))
+    db.commit()
+
+
+def seed_demo_data(db: Session, *, password: str, reset: bool = False) -> SeedResult:
     if len(password) < 8:
         raise ValueError("SEED_PASSWORD 至少 8 位")
 
@@ -342,6 +363,8 @@ def seed_demo_data(db: Session, *, password: str) -> SeedResult:
 
     # W2-07：按标题补齐 5 个演示活动，并归一到演示用 RSVP 分布。
     ctx = require_member(team.id, owner, db)
+    if reset:
+        _reset_demo_business_data(db, team.id)
     users_by_username = {user.username: user for user in users}
     _ensure_demo_events(db, ctx, owner, users_by_username, ZoneInfo(team_timezone))
     if db.scalar(select(Task.id).where(Task.team_id == team.id).limit(1)) is None:
@@ -374,7 +397,15 @@ def seed_demo_data(db: Session, *, password: str) -> SeedResult:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TeamSync 演示种子")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="先删除演示团队的活动/任务/通知，再重建 5 个演示活动",
+    )
+    args = parser.parse_args(argv)
+
     settings = get_settings()
     if not settings.seed_password:
         print(
@@ -384,7 +415,9 @@ def main() -> int:
         return 1
 
     with SessionLocal() as db:
-        result = seed_demo_data(db, password=settings.seed_password)
+        result = seed_demo_data(
+            db, password=settings.seed_password, reset=args.reset
+        )
 
     print("TeamSync 演示数据已就绪：")
     for user in result.users:
@@ -392,6 +425,8 @@ def main() -> int:
     print(f"  团队：{result.team.name}（#{result.team.id}）")
     print(f"  邀请码：{result.invite_code}")
     print("  密码：.env 中的 SEED_PASSWORD")
+    if args.reset:
+        print("  模式：已重置演示业务数据（活动/任务/通知）")
     return 0
 
 

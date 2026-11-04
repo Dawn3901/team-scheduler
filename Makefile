@@ -8,7 +8,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup dev dev-api dev-web test test-web typecheck lint check migrate build seed
+.PHONY: help setup dev dev-api dev-web test test-web typecheck lint check migrate build seed seed-reset
 
 help:
 	@echo "TeamSync commands:"
@@ -20,6 +20,7 @@ help:
 	@echo "  make migrate  alembic upgrade head"
 	@echo "  make build    build Web assets"
 	@echo "  make seed     seed demo data (3 users + 1 team, repeatable)"
+	@echo "  make seed-reset reset demo events/tasks/notifications, then reseed"
 
 setup:
 	@$(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' || (echo "Python 3.12+ is required" && exit 1)
@@ -61,3 +62,7 @@ build:
 seed:
 	cd server && $(VENV_PY) -m alembic upgrade head
 	cd server && $(VENV_PY) -m app.seed
+
+seed-reset:
+	cd server && $(VENV_PY) -m alembic upgrade head
+	cd server && $(VENV_PY) -m app.seed --reset

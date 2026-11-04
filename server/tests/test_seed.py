@@ -177,3 +177,44 @@ def test_seed_upgrades_legacy_private_event_title(db: Session) -> None:
     assert len(events) == 5
     assert "个人安排" not in titles
     assert "私密活动" in titles
+
+
+def test_seed_reset_removes_extra_data_and_rebuilds_demo_events(db: Session) -> None:
+    first = seed_demo_data(db, password=PASSWORD)
+    owner = db.scalar(select(User).where(User.username == "lin"))
+    assert owner is not None
+    weekly = _event(db, first.team.id, "团队周会")
+    weekly.title = "改过的周会"
+    db.add(
+        Event(
+            team_id=first.team.id,
+            title="临时活动",
+            start_at=weekly.start_at,
+            end_at=weekly.end_at,
+            created_by=owner.id,
+        )
+    )
+    db.add(
+        Task(
+            team_id=first.team.id,
+            title="临时任务",
+            created_by=owner.id,
+            due_at=weekly.end_at,
+        )
+    )
+    db.commit()
+
+    second = seed_demo_data(db, password=PASSWORD, reset=True)
+
+    assert second.team.id == first.team.id
+    assert second.invite_code == first.invite_code
+    events = db.scalars(
+        select(Event).where(Event.team_id == second.team.id, Event.deleted_at.is_(None))
+    ).all()
+    titles = {event.title for event in events}
+    assert len(events) == 5
+    assert "临时活动" not in titles
+    assert "改过的周会" not in titles
+    assert "团队周会" in titles
+    assert db.scalar(select(func.count()).select_from(Task)) == 2
+    assert _response(db, _event(db, second.team.id, "团队周会").id, "chen") == "accepted"
