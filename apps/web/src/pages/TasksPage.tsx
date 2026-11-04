@@ -24,7 +24,7 @@ export default function TasksPage() {
       <label>任务状态<select value={status} onChange={e => setStatus(e.target.value)}><option value="">全部状态</option><option value="todo">待办</option><option value="doing">进行中</option><option value="done">已完成</option></select></label>
       <label>负责人筛选<select value={assignee} onChange={e => setAssignee(e.target.value)}><option value="">全部负责人</option><option value={me?.id}>仅我</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
     </div>
-    {(action.error || tasks.isError) && <p role="alert">{action.error || friendlyMessage(tasks.error)}</p>}
+    {tasks.isError && <p role="alert">{friendlyMessage(tasks.error)}</p>}
     {tasks.isPending && <p>任务加载中…</p>}
     {tasks.isError && <button onClick={() => void tasks.refetch()}>重试</button>}
     {tasks.data?.items.length === 0 && <p className="muted">暂无任务，创建一项团队任务吧。</p>}
@@ -56,7 +56,6 @@ export default function TasksPage() {
         <label>任务负责人<select name="assignee" defaultValue={edit?.assignee_id || me?.id} required><option value="">请选择负责人</option>{members.data?.items.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
         <label>截止时间<input name="due" type="datetime-local" defaultValue={localInput(edit?.due_at || new Date(now+86400000).toISOString(), zone)} required /></label>
         <label>任务优先级<select name="priority" defaultValue={edit?.priority || "normal"}><option value="low">低</option><option value="normal">普通</option><option value="high">高</option></select></label>
-        {action.error && <p role="alert">{action.error}</p>}
         <div className="panel-actions"><button className="btn btn-primary" disabled={action.pending}>保存任务</button><button type="button" className="btn btn-secondary" onClick={() => setEditing(null)}>取消</button></div>
       </form>
     </section></div>}

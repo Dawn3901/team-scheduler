@@ -12,7 +12,7 @@ export default function MembersPage() {
   const members = useQuery({queryKey: ["members", id], queryFn: () => listMembers(id)});
   const action = useAction();
   return <section className="panel"><h2>成员</h2>
-    {(action.error || members.isError) && <p role="alert">{action.error || friendlyMessage(members.error)}</p>}
+    {members.isError && <p role="alert">{friendlyMessage(members.error)}</p>}
     {members.isPending && <p>成员加载中…</p>}
     {members.data?.items.map(m => <article className="work-row" key={m.user_id}>
       <div><strong>{m.display_name}</strong> <RoleBadge role={m.role} /><p className="muted">加入于 {m.joined_at.slice(0,10)}</p></div>

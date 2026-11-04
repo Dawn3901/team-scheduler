@@ -13,7 +13,6 @@ export default function ProfilePage() {
     }}>
       <label>显示名<input name="name" defaultValue={me.data.display_name} maxLength={50} required /></label>
       <label>头像颜色<input name="color" type="color" defaultValue={me.data.avatar_color} /></label>
-      {action.error && <p role="alert">{action.error}</p>}
       <button className="btn btn-primary" disabled={action.pending}>保存资料</button>
     </form>
   </section>;

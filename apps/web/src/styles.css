@@ -804,14 +804,21 @@ a {
 .notice { text-align:left; width:100%; border:0; border-bottom:1px solid var(--line); background:white; cursor:pointer; font:inherit; }
 .notice.unread { background:var(--accent-soft); padding:16px; }
 .conflict-box { padding:16px; background:var(--warn-soft); border-radius:8px; }
-.toast { position:fixed; right:20px; bottom:24px; z-index:100; padding:20px; background:var(--ink); color:white; border-radius:12px; box-shadow:var(--shadow); max-width:90vw; }
-.toast button { margin-left:20px; }
+.toast-stack { position:fixed; right:20px; bottom:24px; z-index:100; display:flex; flex-direction:column; gap:8px; max-width:min(360px, 90vw); }
+.toast { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; background:var(--ink); color:white; border-radius:12px; box-shadow:var(--shadow); }
+.toast-error { background:var(--danger); }
+.toast-success { background:#16804a; }
+.toast-info { background:var(--ink); }
+.toast-message { flex:1; overflow-wrap:anywhere; }
+.toast-message a { text-decoration:underline; }
+.toast button { flex:none; padding:0; border:0; background:none; color:inherit; font-size:20px; line-height:1; cursor:pointer; }
 .availability-grid { display:flex; gap:16px; overflow-x:auto; }
 .availability-grid article { min-width:160px; flex:1; }
 .busy-block { display:block; width:100%; padding:12px; margin:8px 0; border:1px solid var(--line); border-radius:8px; background:var(--accent-soft); text-align:left; }
 .calendar-scroll { overflow:auto; }
 .rbc-toolbar button { cursor:pointer; }
 @media(max-width:600px) {
+  .toast-stack { left:12px; right:12px; bottom:12px; max-width:none; }
   .work-dialog { max-height:96vh; padding:16px; }
   .modal-backdrop { padding:8px; }
   .work-row { align-items:flex-start; }

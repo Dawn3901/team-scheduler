@@ -12,7 +12,7 @@ export default function NotificationsPage() {
   const action = useAction(); const navigate = useNavigate();
   return <section className="panel"><h1>通知</h1>
     <div className="panel-actions"><label><input type="checkbox" checked={unread} onChange={e => {setUnread(e.target.checked); setOffset(0);}} />仅未读</label><button className="btn btn-secondary" disabled={action.pending} onClick={() => void action.run(readAllNotifications).catch(() => {})}>全部已读</button></div>
-    {(action.error || query.isError) && <p role="alert">{action.error || friendlyMessage(query.error)}</p>}
+    {query.isError && <p role="alert">{friendlyMessage(query.error)}</p>}
     {query.isPending && <p>通知加载中…</p>}
     {query.data?.items.length === 0 && <p className="muted">暂无通知</p>}
     {query.data?.items.map(n => <button className={`work-row notice ${n.read_at ? "" : "unread"}`} key={n.id} onClick={() => void action.run(async () => {
