@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, listEvents, listMembers, listTasks, localInput, shiftDate, toUtc, type CalendarEvent } from "@teamsync/shared";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useMemo, useState } from "react";
-import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
+import { useMemo, useState, type ReactNode } from "react";
+import { Calendar, dateFnsLocalizer, type ToolbarProps, type View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import EventEditor from "../components/EventEditor";
@@ -11,10 +11,30 @@ import { useMe, useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
-interface Item { id:string; title:string; label:string; timeLabel:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; }
+interface Item { id:string; title:string; label:string; timeLabel:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; resourceId?:number; }
+interface MemberResource { id:number; title:string; role:string; color:string; }
 
 function CalendarEventBlock({ event }: { event: Item }) {
   return <span className="cal-event"><strong>{event.label}</strong>{event.timeLabel ? <small>{event.timeLabel}</small> : null}</span>;
+}
+
+function CalendarToolbar({ view, views, onNavigate, onView }: ToolbarProps<Item, MemberResource>) {
+  const viewLabel: Record<string,string> = { month:"月", week:"周", day:"日" };
+  return <div className="cal-toolbar">
+    <div className="cal-nav">
+      <button type="button" className="icon-btn" aria-label="上一页" onClick={() => onNavigate("PREV")}><span aria-hidden="true">‹</span></button>
+      <button type="button" className="btn btn-secondary" onClick={() => onNavigate("TODAY")}>今天</button>
+      <button type="button" className="icon-btn" aria-label="下一页" onClick={() => onNavigate("NEXT")}><span aria-hidden="true">›</span></button>
+    </div>
+    <div className="cal-views">
+      {(views as string[]).map(v => <button type="button" key={v} className={`cal-view${view === v ? " active" : ""}`} onClick={() => onView(v as View)}>{viewLabel[v] ?? v}</button>)}
+    </div>
+  </div>;
+}
+
+function MemberResourceHeader({ label, resource }: { label: ReactNode; resource: MemberResource }) {
+  const role = resource.role === "owner" ? "Owner" : resource.role === "admin" ? "Admin" : "成员";
+  return <span className="resource-head"><span className="resource-avatar" style={{backgroundColor:resource.color}} aria-hidden="true">{String(label).slice(0,1)}</span><span><strong>{label}</strong><small>{role}</small></span></span>;
 }
 
 export default function CalendarPage() {
@@ -53,7 +73,28 @@ export default function CalendarPage() {
   const uniquePrivate = (blocks: typeof privateBlocks) => Array.from(new Map(blocks.map(b => [`${b.start_at}-${b.end_at}`, b])).values());
   const privateTimed = uniquePrivate(privateBlocks.filter(b => !b.all_day));
   const monthLabel = format(new Date(`${date}T12:00`), "yyyy年M月", {locale:zhCN});
+  const periodLabel = view === "day"
+    ? format(new Date(`${date}T12:00`), "M月d日 EEEE", {locale:zhCN})
+    : view === "week"
+      ? `${format(new Date(`${days[0]}T12:00`), "M月d日", {locale:zhCN})} – ${format(new Date(`${days[days.length-1]}T12:00`), "M月d日", {locale:zhCN})}`
+      : monthLabel;
   const todayLabel = format(new Date(), "M月d日 EEEE", {locale:zhCN});
+  const resourceColors = ["#6366f1", "#0f9f8f", "#d97706", "#db2777", "#2563eb"];
+  const resources: MemberResource[] = (members.data?.items || []).map((m, i) => ({ id:m.user_id, title:m.display_name, role:m.role, color:resourceColors[i % resourceColors.length] }));
+  const dayItems = useMemo<Item[]>(() => {
+    if (view !== "day") return items;
+    return items.flatMap(item => {
+      if (item.event) {
+        const ids = Array.from(new Set(item.event.participants.map(p => p.user_id)));
+        return (ids.length ? ids : [item.event.created_by]).map(uid => ({ ...item, id:`${item.id}-u${uid}`, resourceId:uid }));
+      }
+      if (item.taskId) {
+        const task = tasks.data?.items.find(t => t.id === item.taskId);
+        return task?.assignee_id ? [{ ...item, id:`${item.id}-u${task.assignee_id}`, resourceId:task.assignee_id }] : [];
+      }
+      return [item];
+    });
+  }, [items, view, tasks.data]);
 
   return <section className="calendar-page">
     <div className="calendar-card">
@@ -61,7 +102,7 @@ export default function CalendarPage() {
         <div>
           <p className="eyebrow">团队空间</p>
           <h2>团队日历</h2>
-          <p>{monthLabel} · {visibleEvents.length} 个活动 · {members.data?.items.length ?? 0} 位成员</p>
+          <p>{periodLabel} · {visibleEvents.length} 个活动 · {members.data?.items.length ?? 0} 位成员</p>
         </div>
         <div className="calendar-tools">
           <button className="btn btn-primary" onClick={() => setInitial(toUtc(`${date}T09:00`,zone))}>新建活动</button>
@@ -73,16 +114,18 @@ export default function CalendarPage() {
       </div>
       {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
       {events.isPending && <p className="calendar-loading">日历加载中…</p>}
-      <div className={`calendar-scroll view-${view}`}><Calendar<Item>
+      <div className={`calendar-scroll view-${view}`}><Calendar<Item, MemberResource>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
-        events={items}
+        events={dayItems}
+        resources={view === "day" ? resources : undefined}
+        resourceAccessor="resourceId"
         backgroundEvents={busy ? privateTimed.map((b,i) => ({id:`busy-${b.memberName}-${i}`, title:"私密忙碌",label:"私密忙碌",timeLabel:"",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b"})) : []}
         startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1}
         min={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
         max={calendarDate(toUtc(`${date}T22:00`,zone),zone)}
         scrollToTime={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
         dayLayoutAlgorithm="no-overlap"
-        components={{ event: CalendarEventBlock }}
+        components={{ toolbar: CalendarToolbar, event: CalendarEventBlock, resourceHeader: MemberResourceHeader }}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}

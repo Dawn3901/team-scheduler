@@ -1607,3 +1607,143 @@ body {
   color: var(--warn);
   font-size: 11px;
 }
+
+/* Resource day view: one column per member, demo-style header. */
+.rbc-time-view-resources .rbc-header {
+  padding: 9px 10px;
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.rbc-time-view-resources .rbc-time-header-content {
+  border-color: var(--line);
+}
+
+.resource-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.resource-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.resource-head > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.resource-head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.resource-head small {
+  color: var(--faint);
+  font-size: 9.5px;
+  margin-top: 1px;
+}
+
+/* Keep a visible gutter between member columns in resource day view. */
+.rbc-time-view-resources .rbc-events-container {
+  padding-right: 3px;
+}
+
+.rbc-time-view-resources .rbc-day-slot {
+  border-right: 1px solid var(--line);
+}
+
+.rbc-time-view-resources .rbc-day-slot .rbc-event {
+  border-right: 3px solid var(--surface) !important;
+}
+
+/* Custom calendar toolbar */
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-nav .icon-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.cal-nav .btn {
+  height: 34px;
+}
+
+.cal-toolbar-label {
+  flex: 1;
+  text-align: center;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.cal-views {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.cal-view {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal-view:hover {
+  color: var(--ink);
+}
+
+.cal-view.active {
+  background: white;
+  color: var(--accent-strong);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+}
+
+@media (max-width: 600px) {
+  .cal-toolbar {
+    flex-wrap: wrap;
+    padding: 10px 8px;
+  }
+
+  .cal-toolbar-label {
+    order: 3;
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
