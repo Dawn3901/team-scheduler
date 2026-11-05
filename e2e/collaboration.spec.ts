@@ -120,7 +120,7 @@ test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
     const value = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0);
     const year = value("year");
     const month = value("month");
-    // 下个月最后一天 22:00 → 再 +2 天 02:00，确保跨月、跨天。
+    // 下个月最后一天 20:00 → 再 +2 天 02:00，确保跨月、跨天（日历展示 08:00–22:00）。
     const start = new Date(Date.UTC(year, month + 1, 0));
     const end = new Date(start);
     end.setUTCDate(start.getUTCDate() + 2);
@@ -130,7 +130,7 @@ test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
   });
 
   const title = "跨月多日活动";
-  await addEvent(page,title,[],{start:`${range.start}T22:00`, end:`${range.end}T02:00`});
+  await addEvent(page,title,[],{start:`${range.start}T20:00`, end:`${range.end}T02:00`});
   await expect(page.getByRole("dialog")).toBeHidden();
 
   const chip = page.locator(".rbc-event").filter({hasText:title});

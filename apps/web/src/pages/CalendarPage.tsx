@@ -11,7 +11,11 @@ import { useMe, useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
-interface Item { id:string; title:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; }
+interface Item { id:string; title:string; label:string; timeLabel:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; }
+
+function CalendarEventBlock({ event }: { event: Item }) {
+  return <span className="cal-event"><strong>{event.label}</strong>{event.timeLabel ? <small>{event.timeLabel}</small> : null}</span>;
+}
 
 export default function CalendarPage() {
   const id = Number(useParams().teamId); const team = useTeam(id).data; const me = useMe().data;
@@ -28,10 +32,14 @@ export default function CalendarPage() {
   const busyDays = dateRange(date,"week");
   const availability = useQuery({queryKey:["availability",id,date,member],queryFn:() => getAvailability(id,toUtc(`${busyDays[0]}T00:00`,zone),toUtc(`${shiftDate(busyDays[6],1)}T00:00`,zone),member ? Number(member) : undefined),enabled:busy});
   const items = useMemo<Item[]>(() => [
-    ...(events.data?.items || []).filter(e => e.status !== "cancelled").map(e => ({id:`e${e.id}`, title:e.title,start:calendarDate(e.start_at,zone),end:calendarDate(e.end_at,zone),allDay:e.all_day,color:e.color || "#4f46e5",event:e})),
+    ...(events.data?.items || []).filter(e => e.status !== "cancelled").map(e => {
+      const eventTime = e.all_day ? "全天" : `${formatTime(e.start_at,zone).split(" ").at(-1)}–${formatTime(e.end_at,zone).split(" ").at(-1)}`;
+      return {id:`e${e.id}`, title:`${e.title} ${eventTime}`, label:e.title, timeLabel:eventTime, start:calendarDate(e.start_at,zone),end:calendarDate(e.end_at,zone),allDay:e.all_day,color:e.color || "#4f46e5",event:e};
+    }),
     ...(tasks.data?.items || []).filter(t => !member || t.assignee_id === Number(member)).map(t => {
       const day = localInput(t.due_at,zone).slice(0,10);
-      return {id:`t${t.id}`,title:`截止 ${formatTime(t.due_at,zone).split(" ").at(-1)} · ${t.title}`,start:new Date(`${day}T00:00`),end:new Date(`${shiftDate(day,1)}T00:00`),allDay:true,color:t.status === "done" ? "#16804a" : t.overdue ? "#b42318" : "#475569",taskId:t.id};
+      const due = formatTime(t.due_at,zone).split(" ").at(-1) ?? "";
+      return {id:`t${t.id}`,title:`任务 · ${t.title} 截止 ${due}`, label:`任务 · ${t.title}`, timeLabel:`截止 ${due}`, start:new Date(`${day}T00:00`),end:new Date(`${shiftDate(day,1)}T00:00`),allDay:true,color:t.status === "done" ? "#16804a" : t.overdue ? "#b42318" : "#475569",taskId:t.id};
     }),
   ],[events.data,tasks.data,member,zone]);
   const error = events.error || tasks.error || members.error || (busy && availability.error);
@@ -61,7 +69,7 @@ export default function CalendarPage() {
       <div className="calendar-filterbar">
         <label>成员筛选<select value={member} onChange={e => setMember(e.target.value)}><option value="">全部成员</option><option value={me?.id}>仅我 / 我的活动</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
         <label><input type="checkbox" checked={busy} onChange={e => setBusy(e.target.checked)} />显示周忙闲</label>
-        <span className="calendar-legend">斜纹 = 私密忙碌 · {zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span>
+        <span className="calendar-legend">显示 08:00–22:00 · 斜纹 = 私密忙碌 · {zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span>
       </div>
       {privateAllDay.length > 0 ? <p className="private-busy-note">有 {privateAllDay.length} 个全天私密忙碌，仅计入右侧统计，不在时间轴显示标题。</p> : null}
       {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
@@ -69,8 +77,13 @@ export default function CalendarPage() {
       <div className={`calendar-scroll view-${view}`}><Calendar<Item>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
         events={items}
-        backgroundEvents={busy ? privateTimed.map((b,i) => ({id:`busy-${b.memberName}-${i}`, title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b"})) : []}
-        startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1} scrollToTime={new Date(`${date}T08:00`)}
+        backgroundEvents={busy ? privateTimed.map((b,i) => ({id:`busy-${b.memberName}-${i}`, title:"私密忙碌",label:"私密忙碌",timeLabel:"",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b"})) : []}
+        startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1}
+        min={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
+        max={calendarDate(toUtc(`${date}T22:00`,zone),zone)}
+        scrollToTime={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
+        dayLayoutAlgorithm="no-overlap"
+        components={{ event: CalendarEventBlock }}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}

@@ -1500,3 +1500,87 @@ body {
   color: var(--muted);
   font-size: 10.5px;
 }
+
+/* Calendar readability: full-width calendar, 08:00–22:00, side cards below. */
+.calendar-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.calendar-side {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.calendar-scroll .rbc-time-view,
+.calendar-scroll .rbc-time-content,
+.calendar-scroll .rbc-time-header-content {
+  border-radius: 10px;
+}
+
+.rbc-day-slot .rbc-events-container {
+  margin-right: 0;
+}
+
+.rbc-day-slot .rbc-event {
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 5px;
+}
+
+.rbc-day-slot .rbc-event-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.rbc-event-label {
+  display: none;
+}
+
+.cal-event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.cal-event strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.cal-event small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  opacity: 0.88;
+}
+
+.rbc-month-view .cal-event small {
+  display: none;
+}
+
+@media (max-width: 1200px) {
+  .calendar-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .calendar-side {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rbc-day-slot .rbc-event-label {
+  display: none;
+}
