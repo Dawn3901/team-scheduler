@@ -1847,14 +1847,18 @@ body {
 }
 
 .cal-week-head {
+  position: static;
+  width: auto;
+}
+
+.view-week .rbc-time-header .rbc-header {
   position: relative;
-  width: 100%;
 }
 
 .today-pin {
   position: absolute;
-  top: -3px;
-  right: 3px;
+  top: 5px;
+  right: 7px;
   padding: 1px 3px;
   border: 1px solid #fed7aa;
   border-radius: 6px;
