@@ -1584,3 +1584,46 @@ body {
 .rbc-day-slot .rbc-event-label {
   display: none;
 }
+
+/* Fill calendar cells: no right gutter, no phantom all-day row. */
+.rbc-day-slot .rbc-events-container {
+  margin-right: 0 !important;
+}
+
+.rbc-row-segment {
+  padding: 0;
+}
+
+.rbc-allday-cell .rbc-row-content > .rbc-row:empty {
+  display: none;
+}
+
+/* ---------- event detail ---------- */
+
+.event-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.event-detail-head h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.event-detail-head > div > a {
+  color: var(--accent-strong);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.event-edit-hint {
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11px;
+}
