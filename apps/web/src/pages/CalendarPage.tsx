@@ -39,7 +39,9 @@ export default function CalendarPage() {
     ...(tasks.data?.items || []).filter(t => !member || t.assignee_id === Number(member)).map(t => {
       const day = localInput(t.due_at,zone).slice(0,10);
       const due = formatTime(t.due_at,zone).split(" ").at(-1) ?? "";
-      return {id:`t${t.id}`,title:`任务 · ${t.title} 截止 ${due}`, label:`任务 · ${t.title}`, timeLabel:`截止 ${due}`, start:new Date(`${day}T00:00`),end:new Date(`${shiftDate(day,1)}T00:00`),allDay:true,color:t.status === "done" ? "#16804a" : t.overdue ? "#b42318" : "#475569",taskId:t.id};
+      const state = t.status === "done" ? "（已完成）" : t.overdue ? "（已逾期）" : "";
+      const label = `任务 · ${t.title}${state}`;
+      return {id:`t${t.id}`,title:`${label} 截止 ${due}`, label, timeLabel:`截止 ${due}`, start:new Date(`${day}T00:00`),end:new Date(`${shiftDate(day,1)}T00:00`),allDay:true,color:"#64748b",taskId:t.id};
     }),
   ],[events.data,tasks.data,member,zone]);
   const error = events.error || tasks.error || members.error || (busy && availability.error);
@@ -49,7 +51,6 @@ export default function CalendarPage() {
   const openTasks = taskItems.filter(t => t.status !== "done").length;
   const privateBlocks = (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null).map(b => ({ ...b, memberName: m.display_name })));
   const uniquePrivate = (blocks: typeof privateBlocks) => Array.from(new Map(blocks.map(b => [`${b.start_at}-${b.end_at}`, b])).values());
-  const privateAllDay = uniquePrivate(privateBlocks.filter(b => b.all_day));
   const privateTimed = uniquePrivate(privateBlocks.filter(b => !b.all_day));
   const monthLabel = format(new Date(`${date}T12:00`), "yyyy年M月", {locale:zhCN});
   const todayLabel = format(new Date(), "M月d日 EEEE", {locale:zhCN});
@@ -69,9 +70,7 @@ export default function CalendarPage() {
       <div className="calendar-filterbar">
         <label>成员筛选<select value={member} onChange={e => setMember(e.target.value)}><option value="">全部成员</option><option value={me?.id}>仅我 / 我的活动</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
         <label><input type="checkbox" checked={busy} onChange={e => setBusy(e.target.checked)} />显示周忙闲</label>
-        <span className="calendar-legend">显示 08:00–22:00 · 斜纹 = 私密忙碌 · {zone} · 彩色为活动 · 灰色为任务截止 · 红色为逾期 · 绿色为完成</span>
       </div>
-      {privateAllDay.length > 0 ? <p className="private-busy-note">有 {privateAllDay.length} 个全天私密忙碌，仅计入右侧统计，不在时间轴显示标题。</p> : null}
       {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
       {events.isPending && <p className="calendar-loading">日历加载中…</p>}
       <div className={`calendar-scroll view-${view}`}><Calendar<Item>
