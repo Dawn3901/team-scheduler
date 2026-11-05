@@ -1747,3 +1747,45 @@ body {
     text-align: center;
   }
 }
+
+/* Week header: weekday over date, no month label; today is identified by the top bar. */
+.cal-week-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-week-head span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.cal-week-head strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rbc-time-view .rbc-today,
+.rbc-time-header .rbc-header.rbc-today {
+  background: transparent;
+}
+
+.rbc-current-time-indicator {
+  display: none;
+}
+
+/* Give the two-line week header enough room for weekday + date. */
+.view-week .rbc-time-header .rbc-row:first-child {
+  min-height: 56px;
+}
+
+.view-week .rbc-time-header .rbc-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+}

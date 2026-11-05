@@ -3,7 +3,7 @@ import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, list
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useMemo, useState, type ReactNode } from "react";
-import { Calendar, dateFnsLocalizer, type ToolbarProps, type View } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer, type HeaderProps, type ToolbarProps, type View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import EventEditor from "../components/EventEditor";
@@ -16,6 +16,11 @@ interface MemberResource { id:number; title:string; role:string; color:string; }
 
 function CalendarEventBlock({ event }: { event: Item }) {
   return <span className="cal-event"><strong>{event.label}</strong>{event.timeLabel ? <small>{event.timeLabel}</small> : null}</span>;
+}
+
+function CalendarWeekHeader({ date }: HeaderProps) {
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  return <span className="cal-week-head"><span>{weekdays[date.getDay()]}</span><strong>{format(date, "d")}</strong></span>;
 }
 
 function CalendarToolbar({ view, views, onNavigate, onView }: ToolbarProps<Item, MemberResource>) {
@@ -125,7 +130,8 @@ export default function CalendarPage() {
         max={calendarDate(toUtc(`${date}T22:00`,zone),zone)}
         scrollToTime={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
         dayLayoutAlgorithm="no-overlap"
-        components={{ toolbar: CalendarToolbar, event: CalendarEventBlock, resourceHeader: MemberResourceHeader }}
+        formats={{ timeGutterFormat: "HH:mm" }}
+        components={{ toolbar: CalendarToolbar, header: view === "week" ? CalendarWeekHeader : undefined, event: CalendarEventBlock, resourceHeader: MemberResourceHeader }}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
