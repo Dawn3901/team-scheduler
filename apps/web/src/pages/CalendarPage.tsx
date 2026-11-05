@@ -77,6 +77,8 @@ export default function CalendarPage() {
   const privateBlocks = (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null).map(b => ({ ...b, memberName: m.display_name })));
   const uniquePrivate = (blocks: typeof privateBlocks) => Array.from(new Map(blocks.map(b => [`${b.start_at}-${b.end_at}`, b])).values());
   const privateTimed = uniquePrivate(privateBlocks.filter(b => !b.all_day));
+  const today = localInput(new Date().toISOString(), zone).slice(0,10);
+  const todayInView = days.includes(today);
   const monthLabel = format(new Date(`${date}T12:00`), "yyyy年M月", {locale:zhCN});
   const periodLabel = view === "day"
     ? format(new Date(`${date}T12:00`), "M月d日 EEEE", {locale:zhCN})
@@ -106,7 +108,10 @@ export default function CalendarPage() {
       <div className="calendar-head">
         <div>
           <p className="eyebrow">团队空间</p>
-          <h2>团队日历</h2>
+          <div className="calendar-title-row">
+            <h2>团队日历</h2>
+            {todayInView ? <span className="today-sticker" title="今天">📌 今天</span> : null}
+          </div>
           <p>{periodLabel} · {visibleEvents.length} 个活动 · {members.data?.items.length ?? 0} 位成员</p>
         </div>
         <div className="calendar-tools">
