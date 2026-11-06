@@ -1925,3 +1925,21 @@ body {
 
 .timeline-head .resource-head { align-self: center; }
 .timeline-controls { border-radius: 12px 12px 0 0; }
+
+/* Back-to-calendar is a button, not a blue text link. */
+.back-to-calendar {
+  margin-bottom: 14px;
+}
+
+.back-to-calendar .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.event-detail-head .back-to-calendar {
+  margin-bottom: 0;
+}
+
+.event-detail-head h2 {
+  margin-top: 8px;
+}

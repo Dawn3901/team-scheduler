@@ -2,7 +2,8 @@ import { useNow } from "../hooks/useNow";
 import { useQuery } from "@tanstack/react-query";
 import { completeTask, createTask, deleteTask, formatTime, listMembers, listTasks, localInput, reopenTask, toUtc, updateTask, type Task } from "@teamsync/shared";
 import { useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import { BackToCalendar } from "../components/BackToCalendar";
 import { useMe, useTeam } from "../hooks/useSession";
 import { useAction } from "../hooks/useWork";
 import { friendlyMessage } from "../lib/errors";
@@ -14,12 +15,15 @@ export default function TasksPage() {
   const [status, setStatus] = useState(""); const [assignee, setAssignee] = useState("");
   const [editing, setEditing] = useState<Task | "new" | null>(null);
   const [params] = useSearchParams();
+  const location = useLocation();
+  const fromCalendar = Boolean((location.state as { fromCalendar?: string } | null)?.fromCalendar);
   const tasks = useQuery({queryKey: ["tasks", id, status, assignee], queryFn: () => listTasks(id, {...(status ? {status} : {}), ...(assignee ? {assignee_id: assignee} : {})})});
   const members = useQuery({queryKey: ["members", id], queryFn: () => listMembers(id)});
   const action = useAction();
   const edit = editing && editing !== "new" ? editing : null;
   const isAdmin = team?.my_role === "owner" || team?.my_role === "admin";
   return <section className="panel tasks-panel">
+    {fromCalendar ? <BackToCalendar teamId={id} /> : null}
     <div className="page-head compact">
       <div>
         <p className="eyebrow">团队空间</p>

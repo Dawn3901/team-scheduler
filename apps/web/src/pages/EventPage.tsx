@@ -2,7 +2,8 @@ import { useNow } from "../hooks/useNow";
 import { useQuery } from "@tanstack/react-query";
 import { deleteEvent, formatTime, getEvent, listMembers, removeParticipant, respond, updateEvent } from "@teamsync/shared";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { BackToCalendar } from "../components/BackToCalendar";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
 import { useAction } from "../hooks/useWork";
@@ -16,13 +17,13 @@ export default function EventPage() {
   const team = useTeam(teamId).data; const me = useMe().data; const action = useAction();
   const navigate = useNavigate(); const [editing,setEditing] = useState(false);
   if(query.isPending) return <p>活动加载中…</p>;
-  if(query.isError || query.data.team_id !== teamId) return <section className="panel"><h2>活动不可用</h2><p role="alert">{query.isError ? friendlyMessage(query.error) : "活动不属于当前团队"}</p><Link to={`../calendar`}>返回日历</Link></section>;
+  if(query.isError || query.data.team_id !== teamId) return <section className="panel"><h2>活动不可用</h2><p role="alert">{query.isError ? friendlyMessage(query.error) : "活动不属于当前团队"}</p><BackToCalendar teamId={teamId} /></section>;
   const event = query.data; const zone = team?.timezone || "Asia/Shanghai";
   const edit = event.created_by === me?.id || team?.my_role !== "member";
   const open = event.status === "confirmed" && Date.parse(event.end_at) > now;
   return <section className="panel event-detail">
     <div className="event-detail-head">
-      <div><Link to={`/app/teams/${teamId}/calendar`}>← 返回日历</Link><h2>{event.title}</h2></div>
+      <div><BackToCalendar teamId={teamId} /><h2>{event.title}</h2></div>
       {edit && event.status === "confirmed" && <button className="btn btn-secondary" onClick={() => setEditing(true)}>编辑活动</button>}
     </div>
     <p>{formatTime(event.start_at,zone)} — {formatTime(event.end_at,zone)} {event.all_day && "· 全天"}</p>

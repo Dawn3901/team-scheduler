@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, listEvents, listMembers, listTasks, localInput, shiftDate, toUtc, type CalendarEvent } from "@teamsync/shared";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calendar, dateFnsLocalizer, type ToolbarProps, type View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import CalendarTimeline from "../components/CalendarTimeline";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
@@ -33,6 +33,17 @@ function CalendarToolbar({ view, views, onNavigate, onView }: Pick<ToolbarProps<
   </div>;
 }
 
+interface StoredCalendarState { view:"month"|"week"|"day"; date:string; member:string; busy:boolean; }
+
+function readCalendarState(teamId:number): Partial<StoredCalendarState> | null {
+  try {
+    const raw = sessionStorage.getItem(`teamsync.calendar.ui.${teamId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredCalendarState>;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch { return null; }
+}
+
 function MemberResourceHeader({ label, resource }: { label: ReactNode; resource: MemberResource }) {
   const role = resource.role === "owner" ? "Owner" : resource.role === "admin" ? "Admin" : "成员";
   return <span className="resource-head"><span className="resource-avatar" style={{backgroundColor:resource.color}} aria-hidden="true">{String(label).slice(0,1)}</span><span><strong>{label}</strong><small>{role}</small></span></span>;
@@ -41,10 +52,15 @@ function MemberResourceHeader({ label, resource }: { label: ReactNode; resource:
 export default function CalendarPage() {
   const id = Number(useParams().teamId); const team = useTeam(id).data; const me = useMe().data;
   const zone = team?.timezone || "Asia/Shanghai";
-  const [date,setDate] = useState(() => localInput(new Date().toISOString(),zone).slice(0,10));
-  const [view,setView] = useState<"month"|"week"|"day">("week");
-  const [member,setMember] = useState(""); const [busy,setBusy] = useState(true);
+  const saved = readCalendarState(id);
+  const [date,setDate] = useState(() => saved?.date ?? localInput(new Date().toISOString(),zone).slice(0,10));
+  const [view,setView] = useState<"month"|"week"|"day">(() => saved?.view === "month" || saved?.view === "day" ? saved.view : "week");
+  const [member,setMember] = useState(() => saved?.member ?? ""); const [busy,setBusy] = useState(() => saved?.busy ?? true);
   const [initial,setInitial] = useState<string | null>(null); const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    try { sessionStorage.setItem(`teamsync.calendar.ui.${id}`, JSON.stringify({ view, date, member, busy })); } catch { /* storage can be unavailable */ }
+  }, [id,view,date,member,busy]);
   const days = dateRange(date,view); const from = toUtc(`${days[0]}T00:00`,zone);
   const to = toUtc(`${shiftDate(days[days.length-1],1)}T00:00`,zone);
   const events = useQuery({queryKey:["events",id,from,to,member],queryFn:() => listEvents(id,from,to,member ? Number(member) : undefined)});
@@ -118,11 +134,11 @@ export default function CalendarPage() {
         <CalendarToolbar view={view} views={["month","week","day"]}
           onNavigate={action => setDate(action === "TODAY" ? localInput(new Date().toISOString(),zone).slice(0,10) : shiftDate(view === "week" ? days[0] : date,(action === "PREV" ? -1 : 1) * (view === "week" ? 7 : 1)))}
           onView={next => setView(next as typeof view)} />
-        <CalendarTimeline days={days} items={dayItems} today={today}
+        <CalendarTimeline storageKey={`calendar-${id}`} days={days} items={dayItems} today={today}
           columns={view === "day" && resources.length ? resources.map(resource => ({id:`member-${resource.id}`,day:date,resourceId:resource.id,header:<MemberResourceHeader label={resource.title} resource={resource} />})) : undefined}
           backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
           onCreate={start => setInitial(calendarUtc(start,zone))}
-          onSelect={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`)} />
+          onSelect={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })} />
       </> : <Calendar<Item, MemberResource>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
         events={items}
@@ -131,7 +147,7 @@ export default function CalendarPage() {
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
-        onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`)}
+        onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })}
         eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:item.color}})}
         messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
         style={{height:700}}
@@ -153,7 +169,7 @@ export default function CalendarPage() {
 
       <section className="side-card">
         <div className="side-card-head"><h3>本周任务 <span className="side-count">{taskItems.length}</span></h3><Link to={`/app/teams/${id}/tasks`}>看板</Link></div>
-        {taskItems.length === 0 ? <p className="side-empty">本周暂无任务</p> : taskItems.slice(0, 4).map(t => <Link className="side-task" key={t.id} to={`/app/teams/${id}/tasks?task=${t.id}`}><span className={`side-status ${t.status}${t.overdue ? " overdue" : ""}`} aria-hidden="true" /><span><strong>{t.title}</strong><small>{formatTime(t.due_at, zone)}</small></span></Link>)}
+        {taskItems.length === 0 ? <p className="side-empty">本周暂无任务</p> : taskItems.slice(0, 4).map(t => <Link className="side-task" key={t.id} to={`/app/teams/${id}/tasks?task=${t.id}`} state={{ fromCalendar: location.pathname }}><span className={`side-status ${t.status}${t.overdue ? " overdue" : ""}`} aria-hidden="true" /><span><strong>{t.title}</strong><small>{formatTime(t.due_at, zone)}</small></span></Link>)}
       </section>
 
       <section className="side-card">
