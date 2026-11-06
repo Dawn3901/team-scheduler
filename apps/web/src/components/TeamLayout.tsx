@@ -1,10 +1,8 @@
 import { ApiError } from "@teamsync/shared";
-import { Link, NavLink, Outlet, useParams } from "react-router-dom";
+import { Link, Outlet, useParams } from "react-router-dom";
 
 import { useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
-import { InviteCode } from "./InviteCode";
-import { RoleBadge } from "./RoleBadge";
 
 export function TeamLayout() {
   const { teamId } = useParams();
@@ -57,32 +55,9 @@ export function TeamLayout() {
     );
   }
 
-  const team = teamQuery.data;
-
   return (
-    <section className="workspace">
-      <header className="workspace-head">
-        <div className="workspace-title">
-          <p className="eyebrow">团队空间 · {team.member_count} 位成员</p>
-          <div className="workspace-name">
-            <h1>{team.name}</h1>
-            <RoleBadge role={team.my_role} />
-          </div>
-          <p className="muted">{team.description ?? "暂无团队描述"}</p>
-        </div>
-        <InviteCode code={team.invite_code} />
-      </header>
-
-      <nav className="workspace-nav" aria-label="团队导航">
-        <NavLink to="calendar">日历</NavLink>
-        <NavLink to="tasks">任务</NavLink>
-        <NavLink to="members">成员</NavLink>
-        <NavLink to="settings">设置</NavLink>
-      </nav>
-
-      <div className="workspace-body">
-        <Outlet />
-      </div>
-    </section>
+    <div className="workspace">
+      <Outlet />
+    </div>
   );
 }

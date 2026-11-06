@@ -3,6 +3,8 @@ import { connectRealtime, listNotifications } from "@teamsync/shared";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { Icon } from "./Icon";
+
 import { useToast } from "../lib/toast";
 
 export default function LiveStatus() {
@@ -31,9 +33,17 @@ export default function LiveStatus() {
     }
     if (notice) last.current = notice.id;
   }, [query.data, notify]);
+  const unread = query.data?.unread_count ?? 0;
   return (
     <>
-      <Link to="/app/notifications">通知 ({query.data?.unread_count ?? 0})</Link>
+      <Link
+        to="/app/notifications"
+        className="bell-link"
+        aria-label={`通知 (${unread} 条未读)`}
+      >
+        <Icon name="bell" />
+        {unread > 0 ? <span className="bell-badge">{unread}</span> : null}
+      </Link>
       {!online && (
         <span role="status" className="danger-text">
           连接已断开，正在重连…

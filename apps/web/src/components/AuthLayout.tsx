@@ -13,7 +13,9 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
       <section className="auth-card" aria-labelledby="auth-title">
         <p className="brand">
           <span className="brand-mark" aria-hidden="true">
-            同
+            <span />
+            <span />
+            <span />
           </span>
           <span>TeamSync</span>
         </p>

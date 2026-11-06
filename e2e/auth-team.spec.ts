@@ -30,8 +30,8 @@ test("注册 → 建队 → 退出 → 新用户凭邀请码加入", async ({ br
   await createForm.getByLabel("团队描述").fill("Playwright E2E");
   await createForm.getByRole("button", { name: "创建团队" }).click();
 
-  await expect(owner.getByRole("heading", { name: teamName })).toBeVisible();
-  await expect(owner.getByRole("heading", { name: "日历" })).toBeVisible();
+  await expect(owner.getByText(teamName).first()).toBeVisible();
+  await expect(owner.getByRole("heading", { name: "团队日历" })).toBeVisible();
   const inviteCode = (await owner.locator(".invite-code").textContent())?.trim() ?? "";
   expect(inviteCode).toMatch(/^[A-Z0-9]{8}$/);
 
@@ -47,9 +47,9 @@ test("注册 → 建队 → 退出 → 新用户凭邀请码加入", async ({ br
   await joinForm.getByLabel("邀请码").fill(inviteCode);
   await joinForm.getByRole("button", { name: "加入团队" }).click();
 
-  await expect(guest.getByRole("heading", { name: teamName })).toBeVisible();
+  await expect(guest.getByText(teamName).first()).toBeVisible();
   await expect(guest.getByText(/团队空间 · 2 位成员/)).toBeVisible();
-  await expect(guest.locator(".badge-member")).toHaveText("成员");
+  await expect(guest.locator(".sidebar-user .user-meta small")).toHaveText("成员");
 });
 
 test("错误邀请码给出明确提示", async ({ page }) => {

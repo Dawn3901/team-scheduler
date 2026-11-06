@@ -10,12 +10,14 @@ export default function EventEditor({teamId, timezone, members, current, initial
   const now = useNow();
   const action = useAction();
   const [allDay, setAllDay] = useState(current?.all_day || false);
+  const started = current ? Date.parse(current.start_at) <= now : false;
   const [conflicts, setConflicts] = useState<{display_name:string; start_at:string; title:string|null}[]>([]);
   const [retry, setRetry] = useState<(() => Promise<unknown>) | null>(null);
   const start = localInput(current?.start_at || initial || new Date(now+3600000).toISOString(), timezone);
   const end = localInput(current?.end_at || new Date(Date.parse(initial || new Date().toISOString())+7200000).toISOString(), timezone);
   return <div className="modal-backdrop"><section className="work-dialog" role="dialog" aria-modal="true" aria-label={current ? "编辑活动" : "新建活动"}>
     <h3>{current ? "编辑活动" : "新建活动"}</h3>
+    {started && <p className="event-edit-hint">活动已开始，按规则不能修改开始/结束时间与地点；标题、描述、颜色、可见性仍可编辑。</p>}
     <form className="work-form" onSubmit={e => {
       e.preventDefault(); const f = new FormData(e.currentTarget);
       const save = async (force = false) => {
