@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +12,12 @@ import {
   mockFetch,
   renderApp,
 } from "./test/utils";
+
+// Exercise a cold/slow lazy import so this flow cannot rely on a warm CI cache.
+vi.mock("./pages/CalendarPage", async (importOriginal) => {
+  await new Promise(resolve => setTimeout(resolve, 1200));
+  return importOriginal();
+});
 
 beforeEach(() => {
   // 路由测试使用 HTTP mock；实时通道由真实浏览器 E2E 单独验证。
@@ -172,9 +178,12 @@ describe("teams", () => {
     await user.type(within(form).getByLabelText("团队描述"), "6 周项目");
     await user.click(within(form).getByRole("button", { name: "创建团队" }));
 
-    await vi.dynamicImportSettled();
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
+    });
+    // TeamLayout must render first: only then has React started the lazy import.
+    await act(async () => {
+      await import("./pages/CalendarPage");
     });
     expect(await screen.findByRole("heading", { name: "日历" })).toBeInTheDocument();
     expect(createBody).toEqual({ name: "软工大作业", description: "6 周项目" });
@@ -216,7 +225,6 @@ describe("teams", () => {
     expect(within(form).getByLabelText("邀请码")).toHaveValue("AB12CD34");
     await user.click(within(form).getByRole("button", { name: "加入团队" }));
 
-    await vi.dynamicImportSettled();
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "软工大作业" })).toBeInTheDocument();
     });
