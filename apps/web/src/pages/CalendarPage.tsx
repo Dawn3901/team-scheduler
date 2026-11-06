@@ -3,9 +3,10 @@ import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, list
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useMemo, useState, type ReactNode } from "react";
-import { Calendar, dateFnsLocalizer, type HeaderProps, type ToolbarProps, type View } from "react-big-calendar";
+import { Calendar, dateFnsLocalizer, type ToolbarProps, type View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import CalendarTimeline from "../components/CalendarTimeline";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
@@ -18,13 +19,7 @@ function CalendarEventBlock({ event }: { event: Item }) {
   return <span className="cal-event"><strong>{event.label}</strong>{event.timeLabel ? <small>{event.timeLabel}</small> : null}</span>;
 }
 
-function CalendarWeekHeader({ date, today }: HeaderProps & { today: string }) {
-  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-  const isToday = format(date, "yyyy-MM-dd") === today;
-  return <span className="cal-week-head"><span>{weekdays[date.getDay()]}</span><strong>{format(date, "d")}</strong>{isToday ? <span className="today-pin" title="今天" aria-label="今天">📌</span> : null}</span>;
-}
-
-function CalendarToolbar({ view, views, onNavigate, onView }: ToolbarProps<Item, MemberResource>) {
+function CalendarToolbar({ view, views, onNavigate, onView }: Pick<ToolbarProps<Item, MemberResource>, "view" | "views" | "onNavigate" | "onView">) {
   const viewLabel: Record<string,string> = { month:"月", week:"周", day:"日" };
   return <div className="cal-toolbar">
     <div className="cal-nav">
@@ -75,9 +70,6 @@ export default function CalendarPage() {
   const invites = visibleEvents.filter(e => e.status === "confirmed" && e.my_response === "pending");
   const taskItems = tasks.data?.items ?? [];
   const openTasks = taskItems.filter(t => t.status !== "done").length;
-  const privateBlocks = (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null).map(b => ({ ...b, memberName: m.display_name })));
-  const uniquePrivate = (blocks: typeof privateBlocks) => Array.from(new Map(blocks.map(b => [`${b.start_at}-${b.end_at}`, b])).values());
-  const privateTimed = uniquePrivate(privateBlocks.filter(b => !b.all_day));
   const today = localInput(new Date().toISOString(), zone).slice(0,10);
   const monthLabel = format(new Date(`${date}T12:00`), "yyyy年M月", {locale:zhCN});
   const periodLabel = view === "day"
@@ -121,19 +113,21 @@ export default function CalendarPage() {
       </div>
       {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
       {events.isPending && <p className="calendar-loading">日历加载中…</p>}
-      <div className={`calendar-scroll view-${view}`}><Calendar<Item, MemberResource>
+      <div className={`calendar-scroll view-${view}`}>
+      {view !== "month" ? <>
+        <CalendarToolbar view={view} views={["month","week","day"]}
+          onNavigate={action => setDate(action === "TODAY" ? localInput(new Date().toISOString(),zone).slice(0,10) : shiftDate(view === "week" ? days[0] : date,(action === "PREV" ? -1 : 1) * (view === "week" ? 7 : 1)))}
+          onView={next => setView(next as typeof view)} />
+        <CalendarTimeline days={days} items={dayItems} today={today}
+          columns={view === "day" && resources.length ? resources.map(resource => ({id:`member-${resource.id}`,day:date,resourceId:resource.id,header:<MemberResourceHeader label={resource.title} resource={resource} />})) : undefined}
+          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
+          onCreate={start => setInitial(calendarUtc(start,zone))}
+          onSelect={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`)} />
+      </> : <Calendar<Item, MemberResource>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
-        events={dayItems}
-        resources={view === "day" ? resources : undefined}
-        resourceAccessor="resourceId"
-        backgroundEvents={busy ? privateTimed.map((b,i) => ({id:`busy-${b.memberName}-${i}`, title:"私密忙碌",label:"私密忙碌",timeLabel:"",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b"})) : []}
+        events={items}
         startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1}
-        min={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
-        max={calendarDate(toUtc(`${date}T22:00`,zone),zone)}
-        scrollToTime={calendarDate(toUtc(`${date}T08:00`,zone),zone)}
-        dayLayoutAlgorithm="no-overlap"
-        formats={{ timeGutterFormat: "HH:mm" }}
-        components={{ toolbar: CalendarToolbar, header: view === "week" ? (props) => <CalendarWeekHeader {...props} today={today} /> : undefined, event: CalendarEventBlock, resourceHeader: MemberResourceHeader }}
+        components={{ toolbar: CalendarToolbar, event: CalendarEventBlock }}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
@@ -141,7 +135,7 @@ export default function CalendarPage() {
         eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:item.color}})}
         messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
         style={{height:700}}
-      /></div>
+      />}</div>
     </div>
 
     <aside className="calendar-side">

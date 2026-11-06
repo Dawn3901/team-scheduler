@@ -133,7 +133,7 @@ test("跨月多日活动在月/周/日视图都不丢",async ({page}) => {
   await addEvent(page,title,[],{start:`${range.start}T20:00`, end:`${range.end}T02:00`});
   await expect(page.getByRole("dialog")).toBeHidden();
 
-  const chip = page.locator(".rbc-event").filter({hasText:title});
+  const chip = page.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({hasText:title});
   await page.getByRole("button",{name:"月",exact:true}).click();
   const next = page.getByRole("button",{name:"下一页",exact:true});
   const prev = page.getByRole("button",{name:"上一页",exact:true});
@@ -165,9 +165,9 @@ test("忙闲 → 冲突提示 → 强制保存 → 活动取消",async ({page}) 
   await page.getByRole("button",{name:"仍然创建",exact:true}).click();
   await expect(page.getByRole("dialog")).toBeHidden();
   await page.getByRole("button",{name:"周",exact:true}).click();
-  await expect(page.locator(".rbc-time-view")).toBeVisible();
+  await expect(page.getByLabel("可缩放时间轴，使用滚轮调整粒度，方向键滚动")).toBeVisible();
   await page.getByRole("button",{name:"日",exact:true}).click();
-  await expect(page.locator(".rbc-time-view")).toBeVisible();
+  await expect(page.getByLabel("可缩放时间轴，使用滚轮调整粒度，方向键滚动")).toBeVisible();
   await page.getByRole("button",{name:"月",exact:true}).click();
   await page.getByLabel("显示周忙闲").check();
   await expect(page.getByRole("heading",{name:"本周成员忙闲"})).toBeVisible();
@@ -189,8 +189,8 @@ test("任务指派 → 完成 → 日历截止 → 重开与删除",async ({page
   await page.getByRole("button",{name:"完成任务",exact:true}).click();
   await expect(page.locator(".task-row.done")).toContainText("完成设计文档");
   await page.goto(base+"/calendar");
-  await expect(page.locator(".rbc-event").filter({hasText:"完成设计文档"})).toBeVisible();
-  await page.locator(".rbc-event").filter({hasText:"完成设计文档"}).click();
+  await expect(page.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({hasText:"完成设计文档"})).toBeVisible();
+  await page.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({hasText:"完成设计文档"}).click();
   await page.getByRole("button",{name:"重新打开"}).click();
   await expect(page.getByRole("button",{name:"完成任务",exact:true})).toBeVisible();
   page.on("dialog",dialog => dialog.accept());
@@ -202,14 +202,30 @@ test("任务指派 → 完成 → 日历截止 → 重开与删除",async ({page
 });
 
 
+test("时间轴滚轮缩放与空闲时段展开",async ({page}) => {
+  await setup(page);
+  const viewport = page.getByLabel("可缩放时间轴，使用滚轮调整粒度，方向键滚动");
+  const scale = page.locator(".timeline-controls output");
+  await expect(scale).toHaveText("1 小时");
+  await viewport.hover();
+  await page.mouse.wheel(0,-100);
+  await expect(scale).toHaveText("30 分钟");
+  await page.mouse.wheel(0,100);
+  await expect(scale).toHaveText("1 小时");
+  await page.getByRole("button",{name:/00:00 — 08:00/}).click();
+  await expect(page.getByRole("button",{name:/03:00 新建活动/})).toHaveCount(7);
+  await page.getByRole("button",{name:"重新折叠空闲时段"}).click();
+  await expect(page.getByRole("button",{name:/03:00 新建活动/})).toHaveCount(0);
+});
+
 test("375px 周视图在日历容器内横滑，不撑破页面",async ({page}) => {
   const {base} = await setup(page);
   await page.setViewportSize({width:375,height:812});
   await page.goto(base+"/calendar");
   await page.getByRole("button",{name:"周",exact:true}).click();
-  await expect(page.locator(".rbc-time-view")).toBeVisible();
+  await expect(page.getByLabel("可缩放时间轴，使用滚轮调整粒度，方向键滚动")).toBeVisible();
 
-  const before = await page.locator(".calendar-scroll").evaluate(el => {
+  const before = await page.locator(".timeline-horizontal").evaluate(el => {
     const box = el as HTMLElement;
     return {
       canScroll: box.scrollWidth > box.clientWidth + 1,
@@ -219,10 +235,10 @@ test("375px 周视图在日历容器内横滑，不撑破页面",async ({page}) 
   expect(before.canScroll).toBe(true);
   expect(before.pageOverflow).toBe(false);
 
-  await page.locator(".calendar-scroll").evaluate(el => {
+  await page.locator(".timeline-horizontal").evaluate(el => {
     (el as HTMLElement).scrollLeft = (el as HTMLElement).scrollWidth;
   });
-  expect(await page.locator(".calendar-scroll").evaluate(el => (el as HTMLElement).scrollLeft)).toBeGreaterThan(0);
+  expect(await page.locator(".timeline-horizontal").evaluate(el => (el as HTMLElement).scrollLeft)).toBeGreaterThan(0);
 });
 
 test("资料保存、邀请码轮换和团队删除",async ({page}) => {
