@@ -24,22 +24,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  apps/mobile:
-    dependencies:
-      '@capacitor/android':
-        specifier: ^7.6.10
-        version: 7.6.10(@capacitor/core@7.6.10)
-      '@capacitor/core':
-        specifier: ^7.6.10
-        version: 7.6.10
-    devDependencies:
-      '@capacitor/cli':
-        specifier: ^7.6.10
-        version: 7.6.10
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
   apps/web:
     dependencies:
       '@tanstack/react-query':
