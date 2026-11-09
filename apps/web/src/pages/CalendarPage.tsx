@@ -7,6 +7,7 @@ import { Calendar, dateFnsLocalizer, type ToolbarProps, type View } from "react-
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import CalendarTimeline from "../components/CalendarTimeline";
+import FindTimePanel from "../components/FindTimePanel";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
@@ -44,6 +45,9 @@ export default function CalendarPage() {
   const [date,setDate] = useState(() => localInput(new Date().toISOString(),zone).slice(0,10));
   const [view,setView] = useState<"month"|"week"|"day">("week");
   const [member,setMember] = useState(""); const [busy,setBusy] = useState(true);
+  const [finding,setFinding] = useState(false);
+  const [suggestedEnd,setSuggestedEnd] = useState<string | undefined>();
+  const [suggestedMembers,setSuggestedMembers] = useState<number[]>([]);
   const [initial,setInitial] = useState<string | null>(null); const navigate = useNavigate();
   const days = dateRange(date,view); const from = toUtc(`${days[0]}T00:00`,zone);
   const to = toUtc(`${shiftDate(days[days.length-1],1)}T00:00`,zone);
@@ -104,6 +108,7 @@ export default function CalendarPage() {
           <p>{periodLabel} · {visibleEvents.length} 个活动 · {members.data?.items.length ?? 0} 位成员</p>
         </div>
         <div className="calendar-tools">
+          <button className="btn btn-secondary" onClick={() => setFinding(true)}>智能找空闲</button>
           <button className="btn btn-primary" onClick={() => setInitial(toUtc(`${date}T09:00`,zone))}>新建活动</button>
         </div>
       </div>
@@ -162,6 +167,7 @@ export default function CalendarPage() {
       </section>
     </aside>
 
-    {initial && <EventEditor teamId={id} timezone={zone} members={members.data?.items || []} initial={initial} onClose={() => setInitial(null)} />}
+    {finding && <FindTimePanel teamId={id} timezone={zone} date={date} members={members.data?.items || []} onClose={() => setFinding(false)} onSelect={(slot, people) => {setFinding(false); setInitial(slot.start_at); setSuggestedEnd(slot.end_at); setSuggestedMembers(people);}} />}
+    {initial && <EventEditor teamId={id} timezone={zone} members={members.data?.items || []} initial={initial} initialEnd={suggestedEnd} initialParticipants={suggestedMembers} onClose={() => {setInitial(null); setSuggestedEnd(undefined); setSuggestedMembers([]);}} />}
   </section>;
 }

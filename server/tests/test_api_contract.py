@@ -22,7 +22,7 @@ from app.security import create_access_token
 ROOT = Path(__file__).resolve().parents[2]
 DESIGN_DOC = ROOT / "docs" / "03-概要设计说明书.md"
 
-# 冻结基线：33 个 HTTP 操作（含 Base 之外的 /health）。顺序无关，集合必须完全一致。
+# 冻结基线：CR-009 扩为35个HTTP操作，包含 /health；集合必须完全一致。
 FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/health"),
@@ -49,6 +49,8 @@ FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
         ("DELETE", "/api/v1/events/{event_id}/participants/{user_id}"),
         ("PATCH", "/api/v1/events/{event_id}/rsvp"),
         ("GET", "/api/v1/teams/{team_id}/availability"),
+        ("GET", "/api/v1/teams/{team_id}/availability/suggestions"),
+        ("GET", "/api/v1/teams/{team_id}/tasks/dependency-graph"),
         ("GET", "/api/v1/teams/{team_id}/tasks"),
         ("POST", "/api/v1/teams/{team_id}/tasks"),
         ("PATCH", "/api/v1/tasks/{task_id}"),
@@ -88,6 +90,11 @@ FROZEN_ERROR_CODES = frozenset(FROZEN_HTTP_ERROR_CODES.values()) | {
     "INVALID_PARTICIPANT",
     "INVALID_ASSIGNEE",
     "ORGANIZER_CANNOT_DECLINE",
+    "INVALID_RECURRENCE",
+    "INVALID_DEPENDENCY",
+    "DEPENDENCY_CYCLE",
+    "TASK_BLOCKED",
+    "DEPENDENCY_IN_USE",
 }
 
 # 由 validate_ids 以变量形式抛出的两个业务码。
@@ -170,7 +177,7 @@ def test_frozen_operation_set_matches_openapi() -> None:
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
     assert actual == set(FROZEN_OPERATIONS)
-    assert len(actual) == 33
+    assert len(actual) == 35
 
 
 def test_documented_endpoint_table_matches_frozen_contract() -> None:
