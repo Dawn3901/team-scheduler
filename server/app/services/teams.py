@@ -385,6 +385,7 @@ def remove_member(db: Session, team_id: int, user_id: int) -> None:
         )
     ):
         p.response, p.responded_at = "declined", None
+        p.needs_confirmation = False
     for n in db.scalars(
         select(Notification).where(
             Notification.team_id == team_id,

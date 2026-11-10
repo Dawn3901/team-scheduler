@@ -1,12 +1,19 @@
 """P0 活动、任务输入；业务校验在 service 中执行。"""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class Recurrence(BaseModel):
+    frequency: Literal["weekly", "biweekly"]
+    count: int | None = None
+    until: date | None = None
+
+
 class EventCreate(BaseModel):
+    recurrence: Recurrence | None = None
     title: str
     start_at: datetime
     end_at: datetime
@@ -21,6 +28,7 @@ class EventCreate(BaseModel):
 
 class EventPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    scope: Literal["this", "future", "all"] = "this"
     title: str | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None
@@ -42,6 +50,7 @@ class RsvpRequest(BaseModel):
 
 
 class TaskCreate(BaseModel):
+    dependency_ids: list[int] = Field(default_factory=list)
     title: str
     description: str | None = None
     assignee_id: int
@@ -50,6 +59,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskPatch(BaseModel):
+    dependency_ids: list[int] | None = None
     title: str | None = None
     description: str | None = None
     assignee_id: int | None = None

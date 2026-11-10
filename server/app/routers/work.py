@@ -20,7 +20,9 @@ from app.schemas_work import (
     TaskCreate,
     TaskPatch,
 )
+from app.services import dependencies, recurrence
 from app.services import work as service
+from app.services.suggestions import suggestions
 
 router = APIRouter(tags=["collaboration"])
 Db = Annotated[Session, Depends(get_db)]
@@ -74,7 +76,7 @@ def list_events(
 
 @router.post("/teams/{team_id}/events", status_code=201)
 def create_event(ctx: MemberContext, user: CurrentUser, db: Db, payload: EventCreate):
-    return service.create_event(db, ctx, user, payload)
+    return recurrence.create(db, ctx, user, payload)
 
 
 @router.get("/events/{event_id}")
@@ -86,16 +88,15 @@ def get_event(event_id: int, user: CurrentUser, db: Db):
 @router.patch("/events/{event_id}")
 def patch_event(event_id: int, user: CurrentUser, db: Db, payload: EventPatch):
     event, ctx = service.get_resource(db, Event, event_id, user)
-    return service.patch_event(db, event, ctx, user, payload)
+    return recurrence.patch(db, event, ctx, user, payload)
 
 
 @router.delete("/events/{event_id}", status_code=204)
-def delete_event(event_id: int, user: CurrentUser, db: Db):
+def delete_event(
+    event_id: int, user: CurrentUser, db: Db, scope: Literal["this", "future", "all"] = "this"
+):
     event, ctx = service.get_resource(db, Event, event_id, user)
-    service.can_edit(event, ctx, user.id)
-    service.notify_event(db, event, "event.cancelled", user.id)
-    event.deleted_at, event.status = now_utc(), "cancelled"
-    db.commit()
+    recurrence.delete(db, event, ctx, user, scope)
     return Response(status_code=204)
 
 
@@ -119,6 +120,7 @@ def remove_participant(event_id: int, user_id: int, user: CurrentUser, db: Db):
     if person.is_organizer:
         raise ApiError(422, "ORGANIZER_CANNOT_DECLINE", "不能移除组织者")
     person.response, person.responded_at = "declined", None
+    person.needs_confirmation = False
     service.notify(
         db,
         user_id,
@@ -206,6 +208,7 @@ def reopen_task(task_id: int, user: CurrentUser, db: Db):
 def delete_task(task_id: int, user: CurrentUser, db: Db):
     task, ctx = service.get_resource(db, Task, task_id, user)
     service.can_edit(task, ctx, user.id)
+    dependencies.check_delete(db, task)
     task.deleted_at = now_utc()
     db.commit()
     return Response(status_code=204)
@@ -263,3 +266,37 @@ def read_notification(notification_id: int, user: CurrentUser, db: Db):
     n.read_at = n.read_at or now_utc()
     db.commit()
     return Response(status_code=204)
+
+
+@router.get("/teams/{team_id}/availability/suggestions")
+def suggest_times(
+    ctx: MemberContext,
+    db: Db,
+    start: From,
+    end: To,
+    duration_minutes: int,
+    member_ids: str | None = None,
+    required_ids: str | None = None,
+    work_start: str = "09:00",
+    work_end: str = "18:00",
+    buffer_minutes: int = 0,
+    include_weekend: bool = False,
+):
+    return suggestions(
+        db,
+        ctx,
+        start,
+        end,
+        duration_minutes,
+        ids_query(member_ids) if member_ids is not None else None,
+        ids_query(required_ids) if required_ids is not None else None,
+        work_start,
+        work_end,
+        buffer_minutes,
+        include_weekend,
+    )
+
+
+@router.get("/teams/{team_id}/tasks/dependency-graph")
+def dependency_graph(ctx: MemberContext, db: Db):
+    return dependencies.graph_out(db, ctx.team.id)

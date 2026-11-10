@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Event, Task, Team, now_utc
-from app.services.work import notify, participants, utc
+from app.services.work import notify, participants, timestamp, utc
 
 
 def scan_reminders(db: Session, now: datetime | None = None) -> None:
@@ -36,7 +36,7 @@ def scan_reminders(db: Session, now: datetime | None = None) -> None:
                         "event.reminder",
                         event.title,
                         {"team_id": team.id, "event_id": event.id},
-                        f"event.reminder:{p.user_id}:{event.id}:15m",
+                        f"event.reminder:{p.user_id}:{event.id}:15m:{timestamp(event.start_at)}",
                     )
         tasks = db.scalars(
             select(Task).where(
