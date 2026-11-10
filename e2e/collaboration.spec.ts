@@ -3,6 +3,7 @@ import { expect, test, type Browser, type Locator, type Page } from "@playwright
 async function setup(page: Page) {
   const suffix = `${Date.now()}${Math.random().toString(36).slice(2,6)}`;
   await page.goto("/register");
+  await page.evaluate(() => sessionStorage.clear());
   await page.getByLabel("用户名").fill(`owner_${suffix}`);
   await page.getByLabel("显示名").fill("负责人");
   await page.getByLabel("密码").fill("e2e-correct-horse");
@@ -191,6 +192,7 @@ test("任务指派 → 完成 → 日历截止 → 重开与删除",async ({page
   await page.goto(base+"/calendar");
   await expect(page.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({hasText:"完成设计文档"})).toBeVisible();
   await page.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({hasText:"完成设计文档"}).click();
+  await expect(page.getByRole("button",{name:"返回日历"})).toBeVisible();
   await page.getByRole("button",{name:"重新打开"}).click();
   await expect(page.getByRole("button",{name:"完成任务",exact:true})).toBeVisible();
   page.on("dialog",dialog => dialog.accept());
@@ -216,6 +218,44 @@ test("时间轴滚轮缩放与空闲时段展开",async ({page}) => {
   await expect(page.getByRole("button",{name:/03:00 新建活动/})).toHaveCount(7);
   await page.getByRole("button",{name:"重新折叠空闲时段"}).click();
   await expect(page.getByRole("button",{name:/03:00 新建活动/})).toHaveCount(0);
+});
+
+test("从日历进入活动再返回保留视图、缩放和展开状态",async ({page}) => {
+  await setup(page);
+  const today = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+    const value = (type:string) => parts.find(part => part.type === type)?.value ?? "";
+    return `${value("year")}-${value("month")}-${value("day")}`;
+  });
+  await page.getByRole("button",{name:"周",exact:true}).click();
+  const viewport = page.getByLabel("可缩放时间轴，使用滚轮调整粒度，方向键滚动");
+  await viewport.hover();
+  await page.mouse.wheel(0,-100);
+  await expect(page.locator(".timeline-controls output")).toHaveText("30 分钟");
+  await page.getByRole("button",{name:/00:00 — 08:00/}).click();
+  await addEvent(page,"返回保留测试",[],{start:`${today}T10:00`,end:`${today}T11:00`});
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await page.locator(".timeline-event").filter({hasText:"返回保留测试"}).click();
+  await expect(page.getByRole("button",{name:"返回日历"})).toBeVisible();
+  await page.getByRole("button",{name:"返回日历"}).click();
+  await expect(page.locator(".timeline-controls output")).toHaveText("30 分钟");
+  await expect(page.getByRole("button",{name:"重新折叠空闲时段"})).toBeVisible();
+});
+
+test("从月视图进入活动再返回保留月视图",async ({page}) => {
+  await setup(page);
+  const today = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Shanghai",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+    const value = (type:string) => parts.find(part => part.type === type)?.value ?? "";
+    return `${value("year")}-${value("month")}-${value("day")}`;
+  });
+  await page.getByRole("button",{name:"月",exact:true}).click();
+  await addEvent(page,"月视图返回测试",[],{start:`${today}T10:00`,end:`${today}T11:00`});
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await page.locator(".rbc-event").filter({hasText:"月视图返回测试"}).click();
+  await page.getByRole("button",{name:"返回日历"}).click();
+  await expect(page.locator(".rbc-month-view")).toBeVisible();
+  await expect(page.locator(".cal-view.active")).toHaveText("月");
 });
 
 test("375px 周视图在日历容器内横滑，不撑破页面",async ({page}) => {

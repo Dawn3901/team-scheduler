@@ -9,15 +9,51 @@ export interface TimelineColumn { id:string; day:string; resourceId?:number; hea
 
 const LEVELS = [120, 60, 30, 15] as const;
 
-export default function CalendarTimeline<T extends TimelineItem>({days,items,backgroundItems = [],today,columns,onSelect,onCreate}: {
-  days:string[]; items:T[]; backgroundItems?:TimelineItem[]; today:string; columns?:TimelineColumn[]; onSelect:(item:T) => void; onCreate:(date:Date) => void;
+export default function CalendarTimeline<T extends TimelineItem>({days,items,backgroundItems = [],today,columns,onSelect,onCreate,storageKey}: {
+  days:string[]; items:T[]; backgroundItems?:TimelineItem[]; today:string; columns?:TimelineColumn[]; onSelect:(item:T) => void; onCreate:(date:Date) => void; storageKey?:string;
 }) {
-  const [level,setLevel] = useState(1);
-  const [expanded,setExpanded] = useState<string[]>([]);
+  const storage = storageKey ? `teamsync.calendar.timeline.${storageKey}` : null;
+  const [level,setLevel] = useState(() => {
+    if (!storage) return 1;
+    try {
+      const raw = sessionStorage.getItem(`${storage}.level`);
+      if (raw === null) return 1;
+      const saved = Number(raw);
+      return Number.isInteger(saved) && saved >= 0 && saved < LEVELS.length ? saved : 1;
+    } catch { return 1; }
+  });
+  const [expanded,setExpanded] = useState<string[]>(() => {
+    if (!storage) return [];
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(`${storage}.expanded`) ?? "[]") as unknown;
+      return Array.isArray(saved) ? saved.filter((value): value is string => typeof value === "string") : [];
+    } catch { return []; }
+  });
   const viewport = useRef<HTMLDivElement>(null);
   const anchor = useRef<{minute:number;offset:number} | null>(null);
   const wheelTotal = useRef(0);
   const step = LEVELS[level];
+  useEffect(() => {
+    if (!storage) return;
+    try { sessionStorage.setItem(`${storage}.level`, String(level)); } catch { /* ignore */ }
+  }, [level,storage]);
+  useEffect(() => {
+    if (!storage) return;
+    try { sessionStorage.setItem(`${storage}.expanded`, JSON.stringify(expanded)); } catch { /* ignore */ }
+  }, [expanded,storage]);
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element || !storage) return;
+    try {
+      const saved = Number(sessionStorage.getItem(`${storage}.scroll`));
+      if (Number.isFinite(saved) && saved > 0) element.scrollTop = saved;
+    } catch { /* ignore */ }
+    const onScroll = () => {
+      try { sessionStorage.setItem(`${storage}.scroll`, String(element.scrollTop)); } catch { /* ignore */ }
+    };
+    element.addEventListener("scroll", onScroll, { passive: true });
+    return () => element.removeEventListener("scroll", onScroll);
+  }, [storage]);
   const occupied = useMemo(() => {
     const timed = [...items.filter(item => !item.allDay),...backgroundItems];
     const ranges = days.flatMap(day => timed.filter(item => intersects(item,day)).map(item => ({start:minutes(item.start,day),end:minutes(item.end,day)})));
