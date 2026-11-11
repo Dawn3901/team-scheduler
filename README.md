@@ -286,7 +286,7 @@ Web 需要页面在线；桌面端需要应用在托盘运行；Android 需要�
 - **与 AI 协作的规则**：[AGENTS.md](AGENTS.md)（命令、DoD、改动边界、提交与评审）。
 - **开发文档索引**：[docs/dev/README.md](docs/dev/README.md)。
 
-目标技术栈：FastAPI + SQLAlchemy 2.0 + Alembic + SQLite；React + Vite + TypeScript；Electron；Android 原生 WebView 壳。Electron 已有托盘/系统通知（W4）；Android 本地通知已接入原生 AlarmManager，真机验证待补。`docs/00` 的 Capacitor 基线待 ADR 确认，当前实现不新增 Capacitor 依赖。
+目标技术栈：FastAPI + SQLAlchemy 2.0 + Alembic + SQLite；React + Vite + TypeScript；Electron；Android 原生 WebView 壳。Electron 已有托盘/系统通知（W4）；Android 本地通知已接入原生 AlarmManager，真机验证待补。`docs/00` 的 Capacitor 基线差异见 [ADR-003](docs/changes/ADR-003-实现现状与冻结基线差异.md)（Proposed，待 A/B 批准），当前实现不新增 Capacitor 依赖。
 
 ## 文档
 
