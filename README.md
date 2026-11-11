@@ -25,7 +25,7 @@ TeamSync 是面向 **3–20 人小团队**的共享日程 + 轻量任务协作�
 | Electron 托盘 / 关闭到托盘 / 系统通知 | ✅ 已实现（W4，冒烟通过；实际弹窗待人工确认） |
 | Android 壳（原生 WebView，加载登录页） | 🟡 APK 构建记录见 [Android README](apps/mobile/todolist/README.md)，登录页真机待验证 |
 | Android 本地通知（未来 7 天事件/任务） | 🟡 已实现（W4），待 Android SDK/真机验证 |
-| 单进程部署（`SERVE_WEB=1` 同源托管 Web + API + WS） | 🟡 本机验证通过；局域网第二设备待验（W5-05） |
+| 单进程部署（`SERVE_WEB=1` 同源托管 Web + API + WS） | ✅ 用户验证通过（W5-05，2026-11-11） |
 | 验收、答辩材料 | 🚧 计划中（W5–W6）；W5 记录见 [W5 验收记录](docs/dev/15-W5验收记录-2026-11-11.md) |
 
 **现在就想看界面？** 不用安装任何东西，直接打开 [静态交互原型](demo/index.html)（双击即可，纯前端虚拟数据）。
