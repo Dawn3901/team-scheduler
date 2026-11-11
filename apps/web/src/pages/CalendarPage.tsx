@@ -57,6 +57,9 @@ export default function CalendarPage() {
   const [date,setDate] = useState(() => saved?.date ?? localInput(new Date().toISOString(),zone).slice(0,10));
   const [view,setView] = useState<"month"|"week"|"day">(() => saved?.view === "month" || saved?.view === "day" ? saved.view : "week");
   const [member,setMember] = useState(() => saved?.member ?? ""); const [busy,setBusy] = useState(() => saved?.busy ?? true);
+  const [finding,setFinding] = useState(false);
+  const [suggestedEnd,setSuggestedEnd] = useState<string | undefined>();
+  const [suggestedMembers,setSuggestedMembers] = useState<number[]>([]);
   const [initial,setInitial] = useState<string | null>(null); const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
