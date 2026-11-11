@@ -4,10 +4,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { buildSegments, positionAt, minuteAt, minutes, intersects, timeLabel, layoutEvents, type TimelineItem } from "../lib/calendarTimeline";
+import { borderColorFor } from "../lib/calendarColors";
 
 export interface TimelineColumn { id:string; day:string; resourceId?:number; header:ReactNode; }
 
 const LEVELS = [120, 60, 30, 15] as const;
+// 时间轴背景是 event color 的 10% 浅色，统一用深色文字，避免白字看不清。
+const TIMELINE_TEXT_COLOR = "#111827";
 
 export default function CalendarTimeline<T extends TimelineItem>({days,items,backgroundItems = [],today,columns,onSelect,onCreate,storageKey}: {
   days:string[]; items:T[]; backgroundItems?:TimelineItem[]; today:string; columns?:TimelineColumn[]; onSelect:(item:T) => void; onCreate:(date:Date) => void; storageKey?:string;
@@ -101,7 +104,7 @@ export default function CalendarTimeline<T extends TimelineItem>({days,items,bac
     <div className="timeline-horizontal">
       <div className="timeline-sheet">
         <div className="timeline-head"><span className="timeline-corner">时间</span>{displayColumns.map(column => <div key={column.id} className={column.day === today ? "is-today" : ""}>{column.header}</div>)}</div>
-        <div className="timeline-allday"><span>全天 / 截止</span>{displayColumns.map(column => <div key={column.id}>{items.filter(item => item.allDay && intersects(item,column.day) && (column.resourceId === undefined || item.resourceId === column.resourceId)).map(item => <button type="button" key={item.id} style={{"--event-color":item.color} as CSSProperties} onClick={() => onSelect(item)} title={item.title}>{item.title}</button>)}</div>)}</div>
+        <div className="timeline-allday"><span>全天 / 截止</span>{displayColumns.map(column => <div key={column.id}>{items.filter(item => item.allDay && intersects(item,column.day) && (column.resourceId === undefined || item.resourceId === column.resourceId)).map(item => <button type="button" key={item.id} style={{"--event-color":item.color, "--event-text":TIMELINE_TEXT_COLOR, "--event-border":borderColorFor(item.color)} as CSSProperties} onClick={() => onSelect(item)} title={item.title}>{item.title}</button>)}</div>)}</div>
         <div className="timeline-viewport" ref={viewport} tabIndex={0} aria-label="可缩放时间轴，使用滚轮调整粒度，方向键滚动">
           <div className="timeline-body" style={{height}}>
             {segments.map(segment => segment.folded ? <button type="button" className="timeline-fold" key={segment.start} style={{top:segment.top,height:segment.height}} onClick={() => setExpanded(current => [...current,`${segment.start}-${segment.end}`])}><span>{timeLabel(segment.start)} — {timeLabel(segment.end)}</span><span>··· 空闲 {((segment.end-segment.start)/60).toLocaleString("zh-CN")} 小时 · 点击展开</span></button> :
@@ -110,7 +113,7 @@ export default function CalendarTimeline<T extends TimelineItem>({days,items,bac
               {columnItems(backgroundItems,column).filter(item => intersects(item,day)).map(item => <div className="timeline-busy-block" key={item.id} title={item.title} style={{top:positionAt(segments,minutes(item.start,day)),height:positionAt(segments,minutes(item.end,day))-positionAt(segments,minutes(item.start,day))}} />)}
               {layoutEvents(items.filter(item => column.resourceId === undefined || item.resourceId === column.resourceId),day).map(({item,lane,lanes}) => {
                 const top = positionAt(segments,minutes(item.start,day));
-                return <button type="button" className="timeline-event" key={item.id} title={`${item.title} · ${format(item.start,"HH:mm")} – ${format(item.end,"HH:mm")}`} onClick={() => onSelect(item)} style={{"--event-color":item.color,top,height:Math.max(22,positionAt(segments,minutes(item.end,day))-top-3),left:`${lane/lanes*100}%`,width:`calc(${100/lanes}% - 5px)`} as CSSProperties}><small>{format(item.start,"HH:mm")} – {format(item.end,"HH:mm")}</small><strong>{item.label ?? item.title}</strong></button>;
+                return <button type="button" className="timeline-event" key={item.id} title={`${item.title} · ${format(item.start,"HH:mm")} – ${format(item.end,"HH:mm")}`} onClick={() => onSelect(item)} style={{"--event-color":item.color, "--event-text":TIMELINE_TEXT_COLOR, "--event-border":borderColorFor(item.color),top,height:Math.max(22,positionAt(segments,minutes(item.end,day))-top-3),left:`${lane/lanes*100}%`,width:`calc(${100/lanes}% - 5px)`} as CSSProperties}><small>{format(item.start,"HH:mm")} – {format(item.end,"HH:mm")}</small><strong>{item.label ?? item.title}</strong></button>;
               })}
             </div>; })}</div>
           </div>

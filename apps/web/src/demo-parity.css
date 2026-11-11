@@ -1894,7 +1894,7 @@ body {
 .timeline-allday { border-top: 1px solid #f0f2f6; background: #fcfcfe; }
 .timeline-allday > span { align-self: center; text-align: center; font-size: 10px; color: #98a1b1; }
 .timeline-allday > div { padding: 6px 4px; min-height: 36px; border-left: 1px solid #f0f2f6; }
-.timeline-allday button, .timeline-event { color: var(--event-color); background: color-mix(in srgb, var(--event-color) 10%, white); border: 1px solid color-mix(in srgb, var(--event-color) 20%, white); border-left: 3px solid var(--event-color); border-radius: 6px; text-align: left; font: inherit; cursor: pointer; }
+.timeline-allday button, .timeline-event { color: var(--event-text, #111827); background: color-mix(in srgb, var(--event-color) 10%, white); border: 1px solid color-mix(in srgb, var(--event-border, var(--event-color)) 35%, white); border-left: 3px solid var(--event-border, var(--event-color)); border-radius: 6px; text-align: left; font: inherit; cursor: pointer; }
 .timeline-allday button { display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin: 2px 0; padding: 4px 6px; font-size: 11px; }
 .timeline-viewport { max-height: 530px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #d7dce6 transparent; border-top: 1px solid #e9edf4; }
 .timeline-body { position: relative; }
@@ -1943,3 +1943,31 @@ body {
 .event-detail-head h2 {
   margin-top: 8px;
 }
+
+/* 新手教程与首次使用提示（W5 / CAL-6 配套） */
+.tutorial-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 10px;
+}
+.tutorial-prompt strong { display: block; margin-bottom: 4px; }
+.tutorial-prompt p { margin: 0; color: #475569; font-size: 13px; }
+.tutorial-prompt .panel-actions { margin: 0; flex-wrap: wrap; }
+.tutorial-page { display: grid; gap: 22px; }
+.tutorial-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.tutorial-step { position: relative; padding: 16px 16px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.tutorial-step h2 { margin: 0 0 6px; font-size: 15px; }
+.tutorial-step p { margin: 0; color: #475569; font-size: 13px; line-height: 1.65; }
+.tutorial-step-number { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-bottom: 8px; border-radius: 50%; background: #eef2ff; color: #4338ca; font-size: 12px; font-weight: 700; }
+.tutorial-colors { padding: 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+.tutorial-colors h2 { margin: 0 0 12px; font-size: 16px; }
+.tutorial-colors h3 { margin: 12px 0 8px; font-size: 13px; color: #475569; }
+.tutorial-color-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+.tutorial-swatch { display: inline-flex; align-items: center; min-height: 32px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 12px; font-weight: 600; }

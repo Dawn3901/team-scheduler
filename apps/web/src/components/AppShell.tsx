@@ -14,6 +14,7 @@ const pageLabels: Record<string, string> = {
   settings: "团队设置",
   notifications: "通知中心",
   profile: "个人资料",
+  tutorial: "新手教程",
 };
 
 function pageLabel(pathname: string): string {
@@ -51,11 +52,13 @@ export function AppShell() {
         { to: `/app/teams/${teamId}/settings`, label: "团队设置", icon: "settings" },
         { to: "/app/notifications", label: "通知中心", icon: "bell" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
+        { to: "/app/tutorial", label: "新手教程", icon: "help" },
       ]
     : [
         { to: "/app", label: "我的团队", icon: "users", end: true },
         { to: "/app/notifications", label: "通知中心", icon: "bell" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
+        { to: "/app/tutorial", label: "新手教程", icon: "help" },
       ];
 
   return (

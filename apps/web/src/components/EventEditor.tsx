@@ -36,7 +36,7 @@ export default function EventEditor({teamId, timezone, members, current, initial
   const end = localInput(current?.end_at || initialEnd || new Date(Date.parse(initial || new Date().toISOString())+7200000).toISOString(), timezone);
   return <div className="modal-backdrop"><section className="work-dialog" role="dialog" aria-modal="true" aria-label={current ? "编辑活动" : "新建活动"}>
     <h3>{current ? "编辑活动" : "新建活动"}</h3>
-    {started && <p className="event-edit-hint">活动已开始，按规则不能修改开始/结束时间与地点；标题、描述、颜色、可见性仍可编辑。</p>}
+    {started && <p className="event-edit-hint">活动已开始，按规则不能修改开始/结束时间与地点；标题、描述、可见性仍可编辑。</p>}
     <form className="work-form" onSubmit={e => {
       e.preventDefault(); const f = new FormData(e.currentTarget);
       const save = async (force = false) => {
@@ -44,7 +44,7 @@ export default function EventEditor({teamId, timezone, members, current, initial
         const data: EventInput = {title:String(f.get("title")), description:String(f.get("description")),
           start_at:toUtc(allDay ? `${startLocal}T00:00` : startLocal, timezone),
           end_at:toUtc(allDay ? `${shiftDate(endLocal,1)}T00:00` : endLocal, timezone),
-          all_day:allDay, location:String(f.get("location")), color:String(f.get("color")),
+          all_day:allDay, location:String(f.get("location")),
           visibility:String(f.get("visibility")) as "team" | "private",
           participant_ids:selected.filter(id => id !== currentUserId), ignore_conflicts:force};
         if (!current && repeat !== "none") data.recurrence = {
@@ -88,7 +88,6 @@ export default function EventEditor({teamId, timezone, members, current, initial
       <label>{allDay ? "结束日期（含当天）" : "结束时间"}<input key={`end-${allDay}`} name="end" readOnly={started} type={allDay ? "date" : "datetime-local"} defaultValue={allDay ? (current?.all_day ? shiftDate(end.slice(0,10),-1) : end.slice(0,10)) : end} required /></label>
       <label>地点<input name="location" readOnly={started} defaultValue={current?.location || ""} /></label>
       <label>活动描述<textarea name="description" maxLength={2000} defaultValue={current?.description || ""} /></label>
-      <label>活动颜色<input type="color" name="color" defaultValue={current?.color || "#4f46e5"} /></label>
       <label>可见性<select name="visibility" defaultValue={current?.visibility || "team"}><option value="team">团队可见</option><option value="private">私密（仅组织者和参与者）</option></select></label>
       <fieldset><legend>邀请成员</legend>
         <div className="participant-tools"><button type="button" className="btn btn-ghost" disabled={toggleable.length === 0} onClick={toggleAll}>{allSelected ? "取消邀请全员" : "邀请全员"}</button></div>

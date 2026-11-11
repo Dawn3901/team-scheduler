@@ -1,11 +1,15 @@
 """FastAPI 应用装配。"""
 
-from fastapi import FastAPI, Request, Response
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from app import __version__
-from app.config import get_settings
+from app.config import ROOT_DIR, get_settings
 from app.db import SessionLocal
 from app.errors import register_exception_handlers
 from app.logging import add_request_logging, configure_logging
@@ -20,7 +24,12 @@ from app.realtime.channel import (
 from app.realtime.channel import router as ws_router
 from app.routers import auth, health, teams, work
 
-CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+WEB_CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws: wss:; "
+    "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+)
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -37,8 +46,33 @@ def _add_security_headers(app: FastAPI) -> None:
         for name, value in SECURITY_HEADERS.items():
             response.headers.setdefault(name, value)
         if request.url.path not in DOC_PATHS:
-            response.headers.setdefault("Content-Security-Policy", CSP)
+            is_api = request.url.path == "/health" or request.url.path.startswith("/api")
+            response.headers.setdefault(
+                "Content-Security-Policy", API_CSP if is_api else WEB_CSP
+            )
         return response
+
+
+def _mount_web(app: FastAPI, web_dist_value: str) -> None:
+    """W5-05：可选地由 FastAPI 托管 Web 构建，单进程即可局域网访问。"""
+    web_dist = Path(web_dist_value)
+    if not web_dist.is_absolute():
+        web_dist = (ROOT_DIR / web_dist).resolve()
+    assets = web_dist / "assets"
+    index = web_dist / "index.html"
+    if assets.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets), name="web-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str) -> FileResponse:
+        if full_path == "api" or full_path.startswith("api/") or full_path == "health":
+            raise HTTPException(status_code=404, detail="Not Found")
+        target = (web_dist / full_path).resolve()
+        if web_dist in target.parents and target.is_file():
+            return FileResponse(target)
+        if index.is_file():
+            return FileResponse(index)
+        raise HTTPException(status_code=404, detail="Web dist 未构建")
 
 
 def create_app() -> FastAPI:
@@ -99,6 +133,9 @@ def create_app() -> FastAPI:
                 refresh_team(tid)
             refresh_notifications()
         return response
+
+    if settings.serve_web:
+        _mount_web(app, settings.web_dist)
 
     register_exception_handlers(app)
     _add_security_headers(app)

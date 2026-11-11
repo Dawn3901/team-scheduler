@@ -96,9 +96,10 @@ make check                      # pytest + vitest + typecheck + lint
 # 种子 / 压测
 make seed                       # 3 用户 + 1 团队（可重复）
 make seed-reset                 # 重置演示活动/任务/通知后重建
-# 压测/容量模拟（原 scripts/bench.py 未建立）
-server/.venv/Scripts/python.exe -m scripts.company_demo seed   # Windows
-server/.venv/bin/python -m scripts.company_demo seed           # Linux/WSL
+# 压测/容量模拟
+server/.venv/Scripts/python.exe scripts/bench.py --reset       # W5：50 用户/1 万活动
+server/.venv/Scripts/python.exe -m scripts.company_demo seed   # 500 人/近万活动（可选）
+server/.venv/bin/python scripts/bench.py --reset               # Linux/WSL
 
 # 三端
 pnpm --filter @teamsync/web build
@@ -106,6 +107,10 @@ pnpm --filter @teamsync/desktop build   # tsc 编译主进程/preload
 pnpm dev:desktop                        # 构建 Web + 启动 Electron 壳
 pnpm android:build                      # 调用 apps/mobile/todolist 的 :app:assembleDebug
 # 需 JDK 17/21 + Android SDK；产物 apps/mobile/todolist/app/build/outputs/apk/debug/app-debug.apk
+
+# 部署（W5，单进程同源静态托管）
+pnpm --filter @teamsync/web build
+cd server && SERVE_WEB=1 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
 ### 命令约定
@@ -325,6 +330,11 @@ git switch -c docs/ai-rules       # 文档
 | `docs/04-验收与演示脚本.md` | 8 分钟答辩流程与兜底 |
 | `docs/changes/ADR-003-实现现状与冻结基线差异.md` | 冻结基线与当前实现的差异（Proposed，待 A/B 批准） |
 | `docs/dev/12-W4-三端通知与联调-2026-11-11.md` | W4 托盘/系统通知、Android 本地通知、断网演练与真机缺口 |
+| `docs/dev/15-W5验收记录-2026-11-11.md` | W5 任务/G5 状态、自动化证据与人工待办 |
+| `docs/dev/16-P0对照检查-2026-11-11.md` | 82 条 P0 的逐模块清单、缺口与通过率 |
+| `docs/用户手册.md` | 使用者 5 分钟上手 |
+| `docs/部署文档.md` | 单机/局域网部署、备份恢复 |
+| `docs/已知限制.md` | 未做/未验证项 |
 | `demo/index.html` | 静态交互原型（虚拟数据，不是正式实现） |
 
 ---

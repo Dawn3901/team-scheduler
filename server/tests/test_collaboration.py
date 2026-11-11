@@ -481,3 +481,46 @@ def test_backup_closes_connections_before_renaming(tmp_path, monkeypatch):
     monkeypatch.setattr(type(source), "replace", replace)
     target = backup.backup_sqlite(f"sqlite:///{source}")
     assert target.is_file()
+
+
+def test_time_2330_cross_day_and_all_day(client, actors):
+    """23:30→次日 00:30 的跨天活动、以及全天 00:00→次日 00:00 的边界。"""
+    team, owner, member, other, outsider, headers = actors
+    path = f"/api/v1/teams/{team.id}"
+
+    late = client.post(
+        path + "/events",
+        json=event_data(
+            member.id,
+            title="跨天收尾",
+            start_at="2028-06-01T15:30:00Z",  # 2028-06-01 23:30 +08
+            end_at="2028-06-01T16:30:00Z",    # 2028-06-02 00:30 +08
+        ),
+        headers=headers(owner),
+    )
+    assert late.status_code == 201, late.text
+    body = late.json()
+    assert body["start_at"] == "2028-06-01T15:30:00Z"
+    assert body["end_at"] == "2028-06-01T16:30:00Z"
+
+    all_day = client.post(
+        path + "/events",
+        json=event_data(
+            member.id,
+            title="全天边界",
+            start_at="2028-06-03T16:00:00Z",  # 2028-06-04 00:00 +08
+            end_at="2028-06-04T16:00:00Z",    # 2028-06-05 00:00 +08
+            all_day=True,
+        ),
+        headers=headers(owner),
+    )
+    assert all_day.status_code == 201, all_day.text
+    assert all_day.json()["all_day"] is True
+
+    listed = client.get(
+        path + "/events",
+        params={"from": "2028-05-31T16:00:00Z", "to": "2028-06-05T16:00:00Z"},
+        headers=headers(owner),
+    )
+    assert listed.status_code == 200
+    assert listed.json()["total"] == 2

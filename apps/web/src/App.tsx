@@ -14,6 +14,7 @@ import SettingsPage from "./pages/SettingsPage";
 import EventPage from "./pages/EventPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
+import TutorialPage from "./pages/TutorialPage";
 import TeamSelectPage from "./pages/TeamSelectPage";
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/app/notifications" element={<NotificationsPage />} />
           <Route path="/app/profile" element={<ProfilePage />} />
+          <Route path="/app/tutorial" element={<TutorialPage />} />
           <Route path="/app" element={<TeamSelectPage />} />
 
           <Route path="/app/teams/:teamId" element={<TeamLayout />}>
