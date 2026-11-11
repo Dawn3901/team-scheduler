@@ -10,7 +10,7 @@ import CalendarTimeline from "../components/CalendarTimeline";
 import FindTimePanel from "../components/FindTimePanel";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
-import { borderColorFor, eventColor, taskColor, textColorFor } from "../lib/calendarColors";
+import { borderColorFor, eventColor, taskColor } from "../lib/calendarColors";
 import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
@@ -154,7 +154,7 @@ export default function CalendarPage() {
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
         onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })}
-        eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:borderColorFor(item.color),color:textColorFor(item.color)}})}
+        eventPropGetter={item => ({style:{backgroundColor:`color-mix(in srgb, ${item.color} 10%, white)`,borderColor:`color-mix(in srgb, ${borderColorFor(item.color)} 35%, white)`,borderLeft:`3px solid ${borderColorFor(item.color)}`,color:"#111827"}})}
         messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
         style={{height:700}}
       />}</div>
