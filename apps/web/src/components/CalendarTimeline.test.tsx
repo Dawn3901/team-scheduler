@@ -32,6 +32,8 @@ describe("adaptive timeline", () => {
     const onSelect = vi.fn(); const onCreate = vi.fn();
     const user = userEvent.setup();
     render(<CalendarTimeline days={days} items={[event]} today={days[0]} onSelect={onSelect} onCreate={onCreate} />);
+    const eventButton = screen.getByRole("button", { name: /团队会议/ });
+    expect(eventButton.style.getPropertyValue("--event-text")).toBe("#111827");
     const viewport = screen.getByLabelText(/可缩放时间轴/);
     expect(screen.getByRole("status")).toHaveTextContent("1 小时");
     fireEvent.wheel(viewport,{deltaY:-100,clientY:100});

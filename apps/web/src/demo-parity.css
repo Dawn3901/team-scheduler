@@ -1894,7 +1894,7 @@ body {
 .timeline-allday { border-top: 1px solid #f0f2f6; background: #fcfcfe; }
 .timeline-allday > span { align-self: center; text-align: center; font-size: 10px; color: #98a1b1; }
 .timeline-allday > div { padding: 6px 4px; min-height: 36px; border-left: 1px solid #f0f2f6; }
-.timeline-allday button, .timeline-event { color: var(--event-text, var(--event-color)); background: color-mix(in srgb, var(--event-color) 10%, white); border: 1px solid color-mix(in srgb, var(--event-border, var(--event-color)) 35%, white); border-left: 3px solid var(--event-border, var(--event-color)); border-radius: 6px; text-align: left; font: inherit; cursor: pointer; }
+.timeline-allday button, .timeline-event { color: var(--event-text, #111827); background: color-mix(in srgb, var(--event-color) 10%, white); border: 1px solid color-mix(in srgb, var(--event-border, var(--event-color)) 35%, white); border-left: 3px solid var(--event-border, var(--event-color)); border-radius: 6px; text-align: left; font: inherit; cursor: pointer; }
 .timeline-allday button { display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin: 2px 0; padding: 4px 6px; font-size: 11px; }
 .timeline-viewport { max-height: 530px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #d7dce6 transparent; border-top: 1px solid #e9edf4; }
 .timeline-body { position: relative; }
