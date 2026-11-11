@@ -300,6 +300,11 @@ test("断网恢复后重新连接并刷新",async ({page,context}) => {
   await setup(page);
   await context.setOffline(true);
   await expect(page.getByText("连接已断开，正在重连…")).toBeVisible();
+  // W4-09 演练：默认立即恢复；设置 RECONNECT_OFFLINE_MS=30000 可复现“断网 30 秒”。
+  const offlineMs = Number(process.env.RECONNECT_OFFLINE_MS ?? 0);
+  if (Number.isFinite(offlineMs) && offlineMs > 0) {
+    await page.waitForTimeout(offlineMs);
+  }
   await context.setOffline(false);
   await expect(page.getByRole("heading",{name:"团队日历",exact:true})).toBeVisible();
   await expect(page.getByText("连接已断开，正在重连…")).toBeHidden();

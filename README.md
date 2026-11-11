@@ -22,8 +22,9 @@ TeamSync 是面向 **3–20 人小团队**的共享日程 + 轻量任务协作�
 | 演示种子 `make seed` / `make seed-reset`（3 用户 + 1 团队 + 5 活动 + 2 任务） | ✅ 可重复 / 可重置（W2） |
 | 日历、活动、RSVP、忙闲、任务、通知 | 已接通 server + Web，见 [验证记录](docs/dev/04-server-web验证-2026-11-02.md) |
 | Electron 桌面壳（加载登录页） | ✅ 可打开（W1-08，已冒烟） |
-| Android 壳（加载登录页） | 🟡 已生成，待真机验证（W1-08） |
-| 托盘 / 系统通知 / 本地通知 | 🚧 计划中（W4） |
+| Electron 托盘 / 关闭到托盘 / 系统通知 | ✅ 已实现（W4，冒烟通过；实际弹窗待人工确认） |
+| Android 壳（原生 WebView，加载登录页） | 🟡 APK 构建记录见 [Android README](apps/mobile/todolist/README.md)，登录页真机待验证 |
+| Android 本地通知（未来 7 天事件/任务） | 🟡 已实现（W4），待 Android SDK/真机验证 |
 | 部署、验收、答辩材料 | 🚧 计划中（W5–W6） |
 
 **现在就想看界面？** 不用安装任何东西，直接打开 [静态交互原型](demo/index.html)（双击即可，纯前端虚拟数据）。
@@ -285,7 +286,7 @@ Web 需要页面在线；桌面端需要应用在托盘运行；Android 需要�
 - **与 AI 协作的规则**：[AGENTS.md](AGENTS.md)（命令、DoD、改动边界、提交与评审）。
 - **开发文档索引**：[docs/dev/README.md](docs/dev/README.md)。
 
-目标技术栈：FastAPI + SQLAlchemy 2.0 + Alembic + SQLite；React + Vite + TypeScript；Electron；Capacitor 7（Android）。Electron / Capacitor 已有壳；本次补齐并自动验证的是 server 与 Web，原生通知仍待实现与真机验证。
+目标技术栈：FastAPI + SQLAlchemy 2.0 + Alembic + SQLite；React + Vite + TypeScript；Electron；Android 原生 WebView 壳。Electron 已有托盘/系统通知（W4）；Android 本地通知已接入原生 AlarmManager，真机验证待补。`docs/00` 的 Capacitor 基线待 ADR 确认，当前实现不新增 Capacitor 依赖。
 
 ## 文档
 
