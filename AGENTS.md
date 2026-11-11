@@ -45,10 +45,10 @@ TeamSync（同频）：面向 3–20 人小团队的共享日程 + 轻量任务�
 
 | 目录 | 内容 |
 |---|---|
-| `server/` | FastAPI + SQLAlchemy 2.0 + Alembic + SQLite + APScheduler + WebSocket；pytest 在 `server/tests/` |
-| `apps/web/` | React + Vite + TypeScript；TanStack Query + Zustand；`react-big-calendar` + `date-fns`；Tailwind + Radix |
+| `server/` | FastAPI + SQLAlchemy 2.0 + Alembic + SQLite + asyncio 定时扫描 + WebSocket；pytest 在 `server/tests/` |
+| `apps/web/` | React + Vite + TypeScript；TanStack Query + 组件内状态；`react-big-calendar` + `date-fns`；手写 CSS（未引入 Zustand/Tailwind/Radix） |
 | `apps/desktop/` | Electron 主进程 + preload；托盘、系统通知；不接本地 DB |
-| `apps/mobile/` | Capacitor 7 Android 壳 + `@capacitor/local-notifications`；不做前台服务 |
+| `apps/mobile/todolist/` | 原生 Kotlin WebView 壳 + AlarmManager 本地通知；不做前台服务/后台推送 |
 | `packages/shared/` | 类型、API Client、WS Client、日期工具（纯 TS 源码包） |
 | `docs/` | 需求、设计、验收、AI 约束 |
 | `scripts/` | 种子数据、压测、开发脚本 |
@@ -96,21 +96,23 @@ make check                      # pytest + vitest + typecheck + lint
 # 种子 / 压测
 make seed                       # 3 用户 + 1 团队（可重复）
 make seed-reset                 # 重置演示活动/任务/通知后重建
-python scripts/bench.py         # W5
+# 压测/容量模拟（原 scripts/bench.py 未建立）
+server/.venv/Scripts/python.exe -m scripts.company_demo seed   # Windows
+server/.venv/bin/python -m scripts.company_demo seed           # Linux/WSL
 
 # 三端
 pnpm --filter @teamsync/web build
 pnpm --filter @teamsync/desktop build   # tsc 编译主进程/preload
 pnpm dev:desktop                        # 构建 Web + 启动 Electron 壳
-pnpm sync:android                       # Web 构建 + cap sync android
-cd apps/mobile/android && ./gradlew assembleDebug   # 需 Android SDK + JDK 17/21
+pnpm android:build                      # 调用 apps/mobile/todolist 的 :app:assembleDebug
+# 需 JDK 17/21 + Android SDK；产物 apps/mobile/todolist/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ### 命令约定
 
 - **不要**在 WSL 里对 Maid 的 `node_modules` 跑 `pnpm install`；本项目独立安装依赖。
 - **不要**引入 Docker/Redis/Celery 作为开发依赖；课程演示用本地/单机即可。部署若要用 Docker Compose，属于“改动边界”第 6 条，先问。
-- **不要**改 `--workers` 为多进程；APScheduler 和 WS 都在进程内。
+- **不要**改 `--workers` 为多进程；asyncio 定时扫描和 WS 都在进程内。
 - 任何新增命令，必须同步更新本文件与 README。
 
 ---
@@ -140,7 +142,7 @@ cd apps/mobile/android && ./gradlew assembleDebug   # 需 Android SDK + JDK 17/2
 2. 认证/授权模型、JWT 载荷、密码策略、CORS、限流。
 3. API 路径、字段名、错误码、分页/时间格式、WS 消息类型。
 4. 依赖增删（`pyproject.toml`、`package.json`、`pnpm-lock.yaml`）。
-5. Electron/Capacitor 原生配置、权限、签名、打包配置。
+5. Electron/Android 原生配置、权限、签名、打包配置。
 6. CI/CD、Makefile 的目标语义、部署脚本。
 7. `docs/ai/*` 约束文件、`docs/00` 已冻结决策。
 8. 删除/重命名已存在的公开函数、组件、表、接口。
@@ -321,6 +323,8 @@ git switch -c docs/ai-rules       # 文档
 | `docs/ai/04-变更控制与追踪.md` | 需求/设计变更流程 |
 | `docs/ai/05-验收与测试清单.md` | 怎么证明做完了 |
 | `docs/04-验收与演示脚本.md` | 8 分钟答辩流程与兜底 |
+| `docs/changes/ADR-003-实现现状与冻结基线差异.md` | 冻结基线与当前实现的差异（Proposed，待 A/B 批准） |
+| `docs/dev/12-W4-三端通知与联调-2026-11-11.md` | W4 托盘/系统通知、Android 本地通知、断网演练与真机缺口 |
 | `demo/index.html` | 静态交互原型（虚拟数据，不是正式实现） |
 
 ---

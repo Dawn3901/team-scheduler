@@ -11,7 +11,7 @@
     "test:e2e": "playwright test",
     "dev:desktop": "pnpm --filter @teamsync/web build && pnpm --filter @teamsync/desktop dev",
     "build:desktop": "pnpm --filter @teamsync/desktop build",
-    "sync:android": "pnpm --filter @teamsync/web build && pnpm --filter @teamsync/mobile sync"
+    "android:build": "node scripts/build_android.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1"

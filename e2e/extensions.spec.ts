@@ -21,7 +21,7 @@ test("智能推荐 → 重复活动 → 成员回应 → 改期重新确认",asy
   const guestAuth = await registered.json();
   const guestHeaders = {Authorization:`Bearer ${guestAuth.access_token}`};
   await page.request.post("/api/v1/teams/join",{headers:guestHeaders,data:{invite_code:team.invite_code}});
-  await expect(page.getByText(/2 位成员/)).toBeVisible();
+  await expect(page.locator(".calendar-head").getByText(/2 位成员/)).toBeVisible();
   await page.getByRole("button",{name:"智能找空闲",exact:true}).click();
   const finding = page.getByRole("dialog",{name:"智能找空闲"});
   await finding.getByLabel("起始日期").fill("2028-01-03");
@@ -67,6 +67,8 @@ async function addTask(page:Page, title:string, dependency?:string) {
   await page.getByRole("button",{name:"新建任务",exact:true}).click();
   const dialog=page.getByRole("dialog",{name:"新建任务"});
   await dialog.getByLabel("任务标题").fill(title);
+  // 页面刚加载时 me 可能还没返回，默认负责人为空；显式选负责人，避免 required 卡住提交。
+  await dialog.getByLabel("任务负责人").selectOption({label:"拓展负责人"});
   if(dependency) await dialog.getByLabel(`${dependency} · 未完成`,{exact:true}).check();
   await dialog.getByRole("button",{name:"保存任务"}).click();
   await expect(dialog).toBeHidden();

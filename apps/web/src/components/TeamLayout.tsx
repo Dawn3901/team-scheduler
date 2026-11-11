@@ -1,6 +1,7 @@
 import { ApiError } from "@teamsync/shared";
 import { Link, Outlet, useParams } from "react-router-dom";
 
+import { useNativeNotifications } from "../hooks/useNativeNotifications";
 import { useTeam } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
 
@@ -8,6 +9,7 @@ export function TeamLayout() {
   const { teamId } = useParams();
   const numericTeamId = Number(teamId);
   const teamQuery = useTeam(numericTeamId);
+  useNativeNotifications(numericTeamId, teamQuery.isSuccess);
 
   if (!Number.isInteger(numericTeamId) || numericTeamId <= 0) {
     return (

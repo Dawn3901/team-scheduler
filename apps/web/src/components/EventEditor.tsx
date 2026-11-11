@@ -1,14 +1,30 @@
 import { useNow } from "../hooks/useNow";
 import { ApiError, createEvent, getEvent, inviteParticipants, localInput, shiftDate, toUtc, updateEvent, type CalendarEvent, type EventInput, type EventScope, type Member } from "@teamsync/shared";
 import { useState } from "react";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
 
-export default function EventEditor({teamId, timezone, members, current, initial, initialEnd, initialParticipants = [], onClose}: {
+export default function EventEditor({teamId, timezone, members, current, initial, initialEnd, initialParticipants = [], currentUserId, onClose}: {
   teamId: number; timezone: string; members: Member[]; current?: CalendarEvent;
-  initial?: string; initialEnd?: string; initialParticipants?: number[]; onClose: () => void;
+  initial?: string; initialEnd?: string; initialParticipants?: number[]; currentUserId?: number; onClose: () => void;
 }) {
   const now = useNow();
   const action = useAction();
+  useEscapeKey(!action.pending, onClose);
+  const invitableMembers = members.filter(m => m.user_id !== currentUserId);
+  const alreadyInvited = (m: Member) => Boolean(current?.participants.some(p => p.user_id === m.user_id));
+  const toggleable = invitableMembers.filter(m => !alreadyInvited(m));
+  const [selected, setSelected] = useState<number[]>(() => Array.from(new Set([
+    ...(current?.participants.map(p => p.user_id) ?? []),
+    ...initialParticipants,
+  ])));
+  const allSelected = toggleable.length > 0 && toggleable.every(m => selected.includes(m.user_id));
+  const toggleAll = () => {
+    const ids = toggleable.map(m => m.user_id);
+    setSelected(prev => allSelected
+      ? prev.filter(id => !ids.includes(id))
+      : Array.from(new Set([...prev, ...ids])));
+  };
   const [repeat, setRepeat] = useState("none");
   const [endMode, setEndMode] = useState("count");
   const [allDay, setAllDay] = useState(current?.all_day || false);
@@ -30,7 +46,7 @@ export default function EventEditor({teamId, timezone, members, current, initial
           end_at:toUtc(allDay ? `${shiftDate(endLocal,1)}T00:00` : endLocal, timezone),
           all_day:allDay, location:String(f.get("location")), color:String(f.get("color")),
           visibility:String(f.get("visibility")) as "team" | "private",
-          participant_ids:f.getAll("participants").map(Number), ignore_conflicts:force};
+          participant_ids:selected.filter(id => id !== currentUserId), ignore_conflicts:force};
         if (!current && repeat !== "none") data.recurrence = {
           frequency:repeat as "weekly" | "biweekly",
           ...(endMode === "count" ? {count:Number(f.get("repeatCount"))} : {until:String(f.get("repeatUntil"))}),
@@ -74,7 +90,17 @@ export default function EventEditor({teamId, timezone, members, current, initial
       <label>活动描述<textarea name="description" maxLength={2000} defaultValue={current?.description || ""} /></label>
       <label>活动颜色<input type="color" name="color" defaultValue={current?.color || "#4f46e5"} /></label>
       <label>可见性<select name="visibility" defaultValue={current?.visibility || "team"}><option value="team">团队可见</option><option value="private">私密（仅组织者和参与者）</option></select></label>
-      <fieldset><legend>邀请成员</legend>{members.map(m => <label key={m.user_id}><input name="participants" type="checkbox" value={m.user_id} disabled={current?.participants.some(p => p.user_id === m.user_id)} defaultChecked={current?.participants.some(p => p.user_id === m.user_id) || initialParticipants.includes(m.user_id)} />{m.display_name}</label>)}</fieldset>
+      <fieldset><legend>邀请成员</legend>
+        <div className="participant-tools"><button type="button" className="btn btn-ghost" disabled={toggleable.length === 0} onClick={toggleAll}>{allSelected ? "取消邀请全员" : "邀请全员"}</button></div>
+        <div className="participant-list">
+          {invitableMembers.map(m => <label className="participant-option" key={m.user_id}>
+            <input name="participants" type="checkbox" value={m.user_id} aria-label={m.display_name} disabled={alreadyInvited(m)} checked={selected.includes(m.user_id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, m.user_id] : prev.filter(id => id !== m.user_id))} />
+            <span className="member-avatar participant-avatar" aria-hidden="true">{Array.from(m.display_name)[0] ?? "?"}</span>
+            <span>{m.display_name}</span>
+          </label>)}
+          {invitableMembers.length === 0 && <p className="muted">暂无其他成员可邀请。</p>}
+        </div>
+      </fieldset>
       {!!conflicts.length && <section role="alert" className="conflict-box"><h4>时间冲突</h4>{conflicts.map((c,i) => <p key={i}>{c.display_name}：{c.title || "忙碌"} · {localInput(c.start_at,timezone).replace("T"," ")}</p>)}<button type="button" className="btn btn-danger" disabled={action.pending} onClick={() => {if(retry) void action.run(retry).catch(() => {});}}>仍然{current ? "保存" : "创建"}</button><button type="button" className="btn btn-secondary" onClick={() => {setConflicts([]); setRetry(null);}}>修改时间</button></section>}
       <div className="panel-actions"><button className="btn btn-primary" disabled={action.pending}>保存活动</button><button type="button" className="btn btn-secondary" onClick={onClose}>取消</button></div>
     </form>
