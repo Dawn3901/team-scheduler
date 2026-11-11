@@ -830,3 +830,11 @@ a {
   .header-nav { flex-wrap:wrap; gap:10px; }
 }
 .work-toolbar label:has(input[type=checkbox]) { display:flex; align-items:center; gap:8px; }
+
+.extension-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.suggestion-card { padding:16px; margin:12px 0; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; }
+.confirmation-banner { padding:14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; color:#9a3412; }
+.dependency-panel { padding:16px; margin:16px 0; border:1px solid var(--line); border-radius:12px; }
+.dependency-scroll { overflow-x:auto; max-width:100%; }
+.dependency-blocked, .dependency-warning { color:#9a3412; }
+@media(max-width:480px) { .extension-columns { grid-template-columns:1fr; } }

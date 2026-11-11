@@ -6,10 +6,11 @@ W1-04 建立 users / teams / team_members；其余业务表在后续周次加入
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -94,12 +95,8 @@ class TeamMember(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    team_id: Mapped[int] = mapped_column(
-        ForeignKey("teams.id", ondelete="CASCADE"), nullable=False
-    )
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
     joined_at: Mapped[datetime] = mapped_column(
@@ -114,11 +111,14 @@ class Event(Base):
         CheckConstraint("visibility IN ('team','private')", name="ck_events_visibility"),
         CheckConstraint("status IN ('confirmed','cancelled')", name="ck_events_status"),
         CheckConstraint("all_day IN (0,1)", name="ck_events_all_day"),
+        Index("idx_events_series", "series_id", "original_start"),
         Index("idx_events_team_start", "team_id", "start_at"),
         Index("idx_events_team_end", "team_id", "end_at"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    series_id: Mapped[int | None] = mapped_column(ForeignKey("event_series.id"))
+    original_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(Text)
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -146,13 +146,18 @@ class EventParticipant(Base):
         ),
         CheckConstraint("is_organizer IN (0,1)", name="ck_participants_organizer"),
         Index("idx_participants_user", "user_id"),
-        Index("idx_event_one_organizer", "event_id", unique=True,
-              sqlite_where=text("is_organizer = 1")),
+        Index(
+            "idx_event_one_organizer",
+            "event_id",
+            unique=True,
+            sqlite_where=text("is_organizer = 1"),
+        ),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     response: Mapped[str] = mapped_column(String, default="pending")
+    needs_confirmation: Mapped[bool] = mapped_column(default=False, server_default=text("0"))
     is_organizer: Mapped[bool] = mapped_column(default=False)
     invited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -199,3 +204,38 @@ class Notification(Base):
     dedupe_key: Mapped[str | None] = mapped_column(String)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class EventSeries(Base):
+    __tablename__ = "event_series"
+    __table_args__ = (
+        CheckConstraint("frequency IN ('weekly','biweekly')", name="ck_series_frequency"),
+        CheckConstraint("count >= 1 AND count <= 52", name="ck_series_count"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    frequency: Mapped[str] = mapped_column(String)
+    interval_weeks: Mapped[int] = mapped_column(default=1)
+    until: Mapped[date | None] = mapped_column(Date)
+    count: Mapped[int] = mapped_column()
+    timezone: Mapped[str] = mapped_column(String)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TaskDependency(Base):
+    __tablename__ = "task_dependencies"
+    __table_args__ = (
+        CheckConstraint("task_id != depends_on_id", name="ck_dependency_not_self"),
+        Index("idx_dependencies_parent", "depends_on_id"),
+    )
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
+    )
+    depends_on_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
+    )

@@ -229,3 +229,7 @@ CREATE INDEX ix_events_series ON events(series_id, original_start);
 | B 前端/产品 | 项目成员 B | 暂缓 | 2026-11-02 |
 
 > 按 AGENTS.md：AI 不参与需求决策与契约批准；本 CR 只有两名项目成员都同意后才进入实施。拒绝或延期也必须保留本文与理由。
+
+## 2026-11-09 追加实施决议
+
+用户在本聊天明确要求实施四项拓展，包括重复活动。以 [CR-009](CR-009-four-extensions.md) 为此次增量：启用weekly/biweekly有界物化系列，并包含this/future/all范围。上文2026-11-02暂缓记录保留，当前实施不伪造人类签字；代码评审和最终人工验收待进行。

@@ -13,6 +13,7 @@ from app.errors import ApiError
 from app.models import Event, EventParticipant, Notification, Task, TeamMember, User, now_utc
 from app.schemas import _utc_iso
 from app.schemas_work import EventCreate, EventPatch, TaskCreate, TaskPatch
+from app.services.transactions import serialized_write
 
 
 def utc(value: datetime) -> datetime:
@@ -133,6 +134,8 @@ def event_out(db: Session, event: Event, user_id: int) -> dict:
     people = participants(db, event.id)
     return {
         "id": event.id,
+        "series_id": event.series_id,
+        "original_start": timestamp(event.original_start),
         "team_id": event.team_id,
         "title": event.title,
         "description": event.description,
@@ -145,6 +148,7 @@ def event_out(db: Session, event: Event, user_id: int) -> dict:
         "status": event.status,
         "created_by": event.created_by,
         "updated_at": timestamp(event.updated_at),
+        "my_needs_confirmation": any(p.user_id == user_id and p.needs_confirmation for p in people),
         "my_response": next((p.response for p in people if p.user_id == user_id), None),
         "participants": [participant_out(db, p) for p in people],
     }
@@ -156,6 +160,7 @@ def participant_out(db: Session, p: EventParticipant) -> dict:
         "display_name": db.get(User, p.user_id).display_name,
         "response": p.response,
         "is_organizer": p.is_organizer,
+        "needs_confirmation": p.needs_confirmation,
     }
 
 
@@ -202,10 +207,11 @@ def conflicts(
     end: datetime,
     viewer: int,
     exclude: int | None = None,
+    exclude_ids: set[int] | None = None,
 ) -> list[dict]:
     found = []
     for event in overlapping(db, team_id, start, end):
-        if event.id == exclude:
+        if event.id == exclude or (exclude_ids and event.id in exclude_ids):
             continue
         for p in participants(db, event.id):
             if p.user_id in ids and p.response != "declined":
@@ -233,7 +239,9 @@ def validate_event(data: dict, timezone: str) -> None:
     data["start_at"], data["end_at"] = start, end
 
 
-def create_event(db: Session, ctx: TeamContext, user: User, payload: EventCreate) -> dict:
+def create_event(
+    db: Session, ctx: TeamContext, user: User, payload: EventCreate, *, commit: bool = True
+) -> dict:
     if (
         db.scalar(
             select(func.count())
@@ -243,7 +251,7 @@ def create_event(db: Session, ctx: TeamContext, user: User, payload: EventCreate
         >= 10000
     ):
         raise ApiError(422, "UNPROCESSABLE_ENTITY", "团队活动数量已达上限")
-    data = payload.model_dump(exclude={"participant_ids", "ignore_conflicts"})
+    data = payload.model_dump(exclude={"participant_ids", "ignore_conflicts", "recurrence"})
     validate_event(data, ctx.team.timezone)
     ids = set(payload.participant_ids) | {user.id}
     validate_ids(db, ctx.team.id, ids, "INVALID_PARTICIPANT")
@@ -273,24 +281,39 @@ def create_event(db: Session, ctx: TeamContext, user: User, payload: EventCreate
                 "event.reminder",
                 event.title,
                 {"team_id": event.team_id, "event_id": event.id},
-                f"event.reminder:{uid}:{event.id}:15m",
+                f"event.reminder:{uid}:{event.id}:15m:{timestamp(event.start_at)}",
             )
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return event_out(db, event, user.id)
 
 
 def patch_event(
-    db: Session, event: Event, ctx: TeamContext, user: User, payload: EventPatch
+    db: Session,
+    event: Event,
+    ctx: TeamContext,
+    user: User,
+    payload: EventPatch,
+    *,
+    commit: bool = True,
 ) -> dict:
     can_edit(event, ctx, user.id)
     if event.status == "cancelled":
         raise ApiError(409, "EVENT_CANCELLED", "活动已取消")
-    changes = payload.model_dump(exclude_unset=True, exclude={"ignore_conflicts"})
+    changes = payload.model_dump(exclude_unset=True, exclude={"ignore_conflicts", "scope"})
     for key in ("title", "start_at", "end_at", "all_day", "visibility", "status"):
         if key in changes and changes[key] is None:
             raise ApiError(400, "VALIDATION_ERROR", "必填字段不能为 null")
     changed_time = any(
-        k in changes and changes[k] != getattr(event, k) for k in ("start_at", "end_at", "location")
+        k in changes
+        and (
+            aware_input(changes[k]) != utc(getattr(event, k))
+            if k in ("start_at", "end_at") and changes[k] is not None
+            else changes[k] != getattr(event, k)
+        )
+        for k in ("start_at", "end_at", "location")
     )
     if changed_time and utc(event.start_at) <= now_utc():
         raise ApiError(422, "EVENT_ALREADY_STARTED", "活动开始后不能修改时间或地点")
@@ -320,14 +343,26 @@ def patch_event(
         raise ApiError(409, "TIME_CONFLICT", "所选成员已有安排", {"conflicts": found})
     for key, value in data.items():
         setattr(event, key, value)
-    if changed_time or event.status == "cancelled":
-        notify_event(
-            db,
-            event,
-            "event.cancelled" if event.status == "cancelled" else "event.updated",
-            user.id,
-        )
-    db.commit()
+    if event.status == "cancelled":
+        for p in participants(db, event.id):
+            p.needs_confirmation = False
+        notify_event(db, event, "event.cancelled", user.id)
+    elif changed_time:
+        for p in participants(db, event.id):
+            if not p.is_organizer and p.response in ("accepted", "tentative"):
+                p.response, p.responded_at, p.needs_confirmation = "pending", None, True
+                notify(
+                    db,
+                    p.user_id,
+                    event.team_id,
+                    "event.updated",
+                    f"「{event.title}」时间/地点已变更，请重新确认",
+                    {"team_id": event.team_id, "event_id": event.id},
+                )
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return event_out(db, event, user.id)
 
 
@@ -351,6 +386,7 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
         if old is not None:
             if old.response == "declined" and old.responded_at is None:
                 old.response, old.invited_at = "pending", now_utc()
+                old.needs_confirmation = False
                 notify(
                     db,
                     uid,
@@ -384,6 +420,7 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
     return {"items": items, "total": len(items)}
 
 
+@serialized_write
 def rsvp(db: Session, event: Event, user: User, response: str) -> dict:
     ensure_open(event)
     p = next((p for p in participants(db, event.id) if p.user_id == user.id), None)
@@ -392,11 +429,14 @@ def rsvp(db: Session, event: Event, user: User, response: str) -> dict:
     if p.is_organizer and response != "accepted":
         raise ApiError(422, "ORGANIZER_CANNOT_DECLINE", "组织者请取消活动")
     p.response, p.responded_at = response, now_utc()
+    p.needs_confirmation = False
     db.commit()
     return participant_out(db, p)
 
 
 def task_out(db: Session, task: Task) -> dict:
+    from app.services.dependencies import summary
+
     assignee = db.get(User, task.assignee_id) if task.assignee_id else None
     return {
         "id": task.id,
@@ -405,6 +445,7 @@ def task_out(db: Session, task: Task) -> dict:
         "description": task.description,
         "assignee_id": task.assignee_id,
         "assignee_name": assignee.display_name if assignee else None,
+        **summary(db, task),
         "due_at": timestamp(task.due_at),
         "priority": task.priority,
         "status": task.status,
@@ -415,15 +456,19 @@ def task_out(db: Session, task: Task) -> dict:
     }
 
 
+@serialized_write
 def create_task(db: Session, ctx: TeamContext, user: User, payload: TaskCreate) -> dict:
     validate_ids(db, ctx.team.id, {payload.assignee_id}, "INVALID_ASSIGNEE")
-    data = payload.model_dump()
+    data = payload.model_dump(exclude={"dependency_ids"})
     data["title"] = text_value(data["title"], 100, True)
     data["description"] = text_value(data["description"], 2000)
     data["due_at"] = aware_input(data["due_at"])
     task = Task(team_id=ctx.team.id, created_by=user.id, **data)
     db.add(task)
     db.flush()
+    from app.services.dependencies import set_dependencies
+
+    set_dependencies(db, task, payload.dependency_ids)
     notify(
         db,
         task.assignee_id,
@@ -436,6 +481,7 @@ def create_task(db: Session, ctx: TeamContext, user: User, payload: TaskCreate) 
     return task_out(db, task)
 
 
+@serialized_write
 def patch_task(db: Session, task: Task, ctx: TeamContext, user: User, payload: TaskPatch) -> dict:
     changes = payload.model_dump(exclude_unset=True)
     if set(changes) - {"status"}:
@@ -445,6 +491,12 @@ def patch_task(db: Session, task: Task, ctx: TeamContext, user: User, payload: T
     for key in ("title", "due_at", "priority", "status", "assignee_id"):
         if key in changes and changes[key] is None:
             raise ApiError(422, "UNPROCESSABLE_ENTITY", "必填字段不能为空")
+    from app.services.dependencies import check_status, set_dependencies
+
+    if "dependency_ids" in changes:
+        set_dependencies(db, task, changes.pop("dependency_ids"))
+    if "status" in changes:
+        check_status(db, task, changes["status"])
     if "assignee_id" in changes:
         validate_ids(db, task.team_id, {changes["assignee_id"]}, "INVALID_ASSIGNEE")
         if task.assignee_id != changes["assignee_id"]:
