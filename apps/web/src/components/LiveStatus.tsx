@@ -39,6 +39,7 @@ export default function LiveStatus() {
         navigate(path);
       }
     });
+    return () => bridge.onNavigate(null);
   }, [navigate]);
   useEffect(() => {
     const notice = query.data?.items[0];

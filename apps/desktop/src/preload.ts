@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld("desktop", {
   notify: (payload: NotifyPayload) => {
     ipcRenderer.send("teamsync:notify", payload);
   },
-  onNavigate: (callback: (target: NavigateTarget) => void) => {
+  onNavigate: (callback: ((target: NavigateTarget) => void) | null) => {
     navigateCallback = typeof callback === "function" ? callback : null;
   },
 });

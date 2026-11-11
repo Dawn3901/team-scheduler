@@ -17,7 +17,7 @@ export interface DesktopBridge {
   platform: string;
   getVersion: () => string;
   notify: (payload: DesktopNotifyPayload) => void;
-  onNavigate: (callback: (target: DesktopTarget) => void) => void;
+  onNavigate: (callback: ((target: DesktopTarget) => void) | null) => void;
 }
 
 declare global {

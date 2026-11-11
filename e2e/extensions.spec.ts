@@ -21,7 +21,7 @@ test("智能推荐 → 重复活动 → 成员回应 → 改期重新确认",asy
   const guestAuth = await registered.json();
   const guestHeaders = {Authorization:`Bearer ${guestAuth.access_token}`};
   await page.request.post("/api/v1/teams/join",{headers:guestHeaders,data:{invite_code:team.invite_code}});
-  await expect(page.getByText(/2 位成员/)).toBeVisible();
+  await expect(page.locator(".calendar-head").getByText(/2 位成员/)).toBeVisible();
   await page.getByRole("button",{name:"智能找空闲",exact:true}).click();
   const finding = page.getByRole("dialog",{name:"智能找空闲"});
   await finding.getByLabel("起始日期").fill("2028-01-03");
