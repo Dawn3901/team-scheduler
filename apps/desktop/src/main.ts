@@ -327,6 +327,14 @@ async function runSmokeTest(window: BrowserWindow): Promise<void> {
     console.log(`NOTIFY_SUPPORTED=${Notification.isSupported()}`);
   }
 
+  await window.webContents.executeJavaScript(
+    'window.__nav = null; window.desktop.onNavigate((target) => { window.__nav = target; });',
+  );
+  sendNavigate({ teamId: 1, eventId: 2 });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const nav = await window.webContents.executeJavaScript('window.__nav');
+  console.log(`NAVIGATE_OK=${Boolean(nav && nav.eventId === 2 && nav.teamId === 1)}`);
+
   window.close();
   await new Promise((resolve) => setTimeout(resolve, 150));
   const hidden = !mainWindow?.isVisible();
