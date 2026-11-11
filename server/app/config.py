@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     team_timezone: str = "Asia/Shanghai"
     access_token_expire_days: int = 7
     log_level: str = "INFO"
+    # W5-05：单进程部署时由 FastAPI 托管 apps/web/dist；默认关闭，开发仍用 Vite。
+    serve_web: bool = False
+    web_dist: str = str(ROOT_DIR / "apps" / "web" / "dist")
     # make seed 的演示账号密码；不设时种子脚本会明确报错。
     seed_password: str | None = None
 
