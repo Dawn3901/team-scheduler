@@ -184,6 +184,6 @@ export default function CalendarPage() {
     </aside>
 
     {finding && <FindTimePanel teamId={id} timezone={zone} date={date} members={members.data?.items || []} onClose={() => setFinding(false)} onSelect={(slot, people) => {setFinding(false); setInitial(slot.start_at); setSuggestedEnd(slot.end_at); setSuggestedMembers(people);}} />}
-    {initial && <EventEditor teamId={id} timezone={zone} members={members.data?.items || []} initial={initial} initialEnd={suggestedEnd} initialParticipants={suggestedMembers} onClose={() => {setInitial(null); setSuggestedEnd(undefined); setSuggestedMembers([]);}} />}
+    {initial && <EventEditor teamId={id} timezone={zone} members={members.data?.items || []} initial={initial} initialEnd={suggestedEnd} initialParticipants={suggestedMembers} currentUserId={me?.id} onClose={() => {setInitial(null); setSuggestedEnd(undefined); setSuggestedMembers([]);}} />}
   </section>;
 }

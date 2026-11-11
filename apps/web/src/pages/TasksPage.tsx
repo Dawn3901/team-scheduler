@@ -5,6 +5,7 @@ import { completeTask, createTask, deleteTask, formatTime, listMembers, listTask
 import { useState } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { BackToCalendar } from "../components/BackToCalendar";
+import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useMe, useTeam } from "../hooks/useSession";
 import { useAction } from "../hooks/useWork";
 import { friendlyMessage } from "../lib/errors";
@@ -23,6 +24,7 @@ export default function TasksPage() {
   const allTasks = useQuery({queryKey:["tasks",id],queryFn:() => listTasks(id)});
   const members = useQuery({queryKey: ["members", id], queryFn: () => listMembers(id)});
   const action = useAction();
+  useEscapeKey(Boolean(editing) && !action.pending, () => setEditing(null));
   const edit = editing && editing !== "new" ? editing : null;
   const isAdmin = team?.my_role === "owner" || team?.my_role === "admin";
   return <section className="panel tasks-panel">

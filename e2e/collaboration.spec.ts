@@ -312,3 +312,33 @@ test("断网恢复后重新连接并刷新",async ({page,context}) => {
   await page.setViewportSize({width:375,height:812});
   await page.screenshot({path:"debug/calendar-mobile.png",fullPage:true});
 });
+
+test("新建活动：不邀请自己、可邀请全员，Esc 取消",async ({browser,page}) => {
+  const {base,code,suffix} = await setup(page);
+  const guest = await joinAs(browser, code, `guest_${suffix}`, "成员甲");
+  await page.goto(base+"/calendar");
+  await page.getByRole("button",{name:"新建活动",exact:true}).click();
+  const dialog = page.getByRole("dialog",{name:"新建活动"});
+  const boxes = dialog.locator('input[name="participants"]');
+  await expect(boxes).toHaveCount(1);
+  await expect(dialog.getByLabel("负责人",{exact:true})).toHaveCount(0);
+  await expect(dialog.getByLabel("成员甲",{exact:true})).toBeVisible();
+  await dialog.getByRole("button",{name:"邀请全员"}).click();
+  await expect(boxes.first()).toBeChecked();
+  await dialog.getByRole("button",{name:"取消邀请全员"}).click();
+  await expect(boxes.first()).not.toBeChecked();
+  await expect(dialog.getByRole("button",{name:"邀请全员"})).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await guest.close();
+});
+
+test("新建任务按 Esc 取消",async ({page}) => {
+  const {base} = await setup(page);
+  await page.goto(base+"/tasks");
+  await page.getByRole("button",{name:"新建任务",exact:true}).click();
+  const dialog = page.getByRole("dialog",{name:"新建任务"});
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});

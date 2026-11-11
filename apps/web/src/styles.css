@@ -795,6 +795,12 @@ a {
 .work-form textarea { min-height:80px; }
 .work-form label:has(input[type=checkbox]) { display:flex; align-items:center; }
 .work-form fieldset { display:flex; flex-wrap:wrap; gap:12px; border:1px solid var(--line); border-radius:8px; }
+.participant-tools { flex-basis:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.participant-list { flex-basis:100%; display:flex; flex-direction:column; gap:8px; }
+.work-form .participant-list .participant-option { display:flex; align-items:center; gap:10px; width:100%; padding:6px 8px; border-radius:8px; }
+.participant-option:hover { background:var(--surface-2); }
+.participant-option input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent); }
+.participant-option .member-avatar { width:30px; height:30px; border-radius:50%; font-size:12px; }
 .modal-backdrop { position:fixed; inset:0; z-index:50; background:#11182780; display:flex; align-items:center; justify-content:center; padding:16px; }
 .work-dialog { background:white; border-radius:16px; box-shadow:var(--shadow); padding:24px; width:560px; max-width:100%; max-height:92vh; overflow:auto; }
 .btn-danger { background:var(--danger); color:white; }

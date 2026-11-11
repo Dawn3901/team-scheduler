@@ -67,6 +67,8 @@ async function addTask(page:Page, title:string, dependency?:string) {
   await page.getByRole("button",{name:"新建任务",exact:true}).click();
   const dialog=page.getByRole("dialog",{name:"新建任务"});
   await dialog.getByLabel("任务标题").fill(title);
+  // 页面刚加载时 me 可能还没返回，默认负责人为空；显式选负责人，避免 required 卡住提交。
+  await dialog.getByLabel("任务负责人").selectOption({label:"拓展负责人"});
   if(dependency) await dialog.getByLabel(`${dependency} · 未完成`,{exact:true}).check();
   await dialog.getByRole("button",{name:"保存任务"}).click();
   await expect(dialog).toBeHidden();
