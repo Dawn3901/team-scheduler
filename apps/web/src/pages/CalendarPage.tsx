@@ -10,6 +10,7 @@ import CalendarTimeline from "../components/CalendarTimeline";
 import FindTimePanel from "../components/FindTimePanel";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
+import { borderColorFor, eventColor, taskColor, textColorFor } from "../lib/calendarColors";
 import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
@@ -75,14 +76,14 @@ export default function CalendarPage() {
   const items = useMemo<Item[]>(() => [
     ...(events.data?.items || []).filter(e => e.status !== "cancelled").map(e => {
       const eventTime = e.all_day ? "全天" : `${formatTime(e.start_at,zone).split(" ").at(-1)}–${formatTime(e.end_at,zone).split(" ").at(-1)}`;
-      return {id:`e${e.id}`, title:`${e.title} ${eventTime}`, label:e.title, timeLabel:eventTime, start:calendarDate(e.start_at,zone),end:calendarDate(e.end_at,zone),allDay:e.all_day,color:e.color || "#4f46e5",event:e};
+      return {id:`e${e.id}`, title:`${e.title} ${eventTime}`, label:e.title, timeLabel:eventTime, start:calendarDate(e.start_at,zone),end:calendarDate(e.end_at,zone),allDay:e.all_day,color:eventColor(e),event:e};
     }),
     ...(tasks.data?.items || []).filter(t => !member || t.assignee_id === Number(member)).map(t => {
       const day = localInput(t.due_at,zone).slice(0,10);
       const due = formatTime(t.due_at,zone).split(" ").at(-1) ?? "";
       const state = t.status === "done" ? "（已完成）" : t.overdue ? "（已逾期）" : "";
       const label = `任务 · ${t.title}${state}`;
-      return {id:`t${t.id}`,title:`${label} 截止 ${due}`, label, timeLabel:`截止 ${due}`, start:new Date(`${day}T00:00`),end:new Date(`${shiftDate(day,1)}T00:00`),allDay:true,color:"#64748b",taskId:t.id};
+      return {id:`t${t.id}`,title:`${label} 截止 ${due}`, label, timeLabel:`截止 ${due}`, start:new Date(`${day}T00:00`),end:new Date(`${shiftDate(day,1)}T00:00`),allDay:true,color:taskColor(t),taskId:t.id};
     }),
   ],[events.data,tasks.data,member,zone]);
   const error = events.error || tasks.error || members.error || (busy && availability.error);
@@ -153,7 +154,7 @@ export default function CalendarPage() {
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
         onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })}
-        eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:item.color}})}
+        eventPropGetter={item => ({style:{backgroundColor:item.color,borderColor:borderColorFor(item.color),color:textColorFor(item.color)}})}
         messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
         style={{height:700}}
       />}</div>

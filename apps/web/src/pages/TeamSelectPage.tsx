@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { CreateTeamForm } from "../components/CreateTeamForm";
 import { JoinTeamForm } from "../components/JoinTeamForm";
+import TutorialPrompt from "../components/TutorialPrompt";
 import { TeamCard } from "../components/TeamCard";
 import { useTeams } from "../hooks/useSession";
 import { friendlyMessage } from "../lib/errors";
@@ -48,6 +49,8 @@ export default function TeamSelectPage() {
           </button>
         </div>
       </div>
+
+      <TutorialPrompt />
 
       {mode === "create" ? (
         <CreateTeamForm onCancel={() => setMode(null)} onCreated={goToTeam} />
