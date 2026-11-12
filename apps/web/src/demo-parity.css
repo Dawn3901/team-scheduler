@@ -1971,3 +1971,14 @@ body {
 .tutorial-colors h3 { margin: 12px 0 8px; font-size: 13px; color: #475569; }
 .tutorial-color-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 .tutorial-swatch { display: inline-flex; align-items: center; min-height: 32px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 12px; font-weight: 600; }
+
+/* 关于页（项目介绍） */
+.about-page { display: grid; gap: 20px; }
+.about-hero { padding: 20px; border-radius: 12px; background: linear-gradient(135deg, #eef2ff, #f8fafc); border: 1px solid #e0e7ff; }
+.about-hero h2 { margin: 0 0 10px; font-size: 20px; }
+.about-hero p { margin: 0; color: #475569; font-size: 14px; line-height: 1.8; }
+.about-section { display: grid; gap: 12px; }
+.about-section > h2 { margin: 0; font-size: 17px; }
+.about-section .tutorial-step h2 { font-size: 15px; }
+.about-color-row { margin-top: 8px; }
+.about-list { margin: 0; padding-left: 20px; color: #475569; font-size: 13px; line-height: 1.9; }
