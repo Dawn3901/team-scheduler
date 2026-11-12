@@ -25,4 +25,8 @@ test("自己创建的私密活动按个人活动着色，不是灰色", async ({
   // 蓝色 #2563eb；灰色私密是 #6b7280。
   const left = await item.evaluate((element) => getComputedStyle(element).borderLeftColor);
   expect(left.replace(/\s/g, "")).toBe("rgb(37,99,235)");
+
+  // 自己的活动已经以可点事件显示，忙闲层不应再叠一层灰色斜纹。
+  const busyOverlays = page.locator(".timeline-busy-block");
+  expect(await busyOverlays.count()).toBe(0);
 });

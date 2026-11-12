@@ -88,6 +88,10 @@ export default function CalendarPage() {
   ],[events.data,tasks.data,member,zone]);
   const error = events.error || tasks.error || members.error || (busy && availability.error);
   const visibleEvents = events.data?.items ?? [];
+  // 自己的活动已经作为可点事件显示，忙闲层不要再画一遍灰色斜纹。
+  const mineBlocks = visibleEvents
+    .filter(e => e.status !== "cancelled" && e.my_response !== null && e.my_response !== "declined")
+    .map(e => ({start_at: e.start_at, end_at: e.end_at}));
   const invites = visibleEvents.filter(e => e.status === "confirmed" && e.my_response === "pending");
   const taskItems = tasks.data?.items ?? [];
   const openTasks = taskItems.filter(t => t.status !== "done").length;
@@ -142,7 +146,7 @@ export default function CalendarPage() {
           onView={next => setView(next as typeof view)} />
         <CalendarTimeline storageKey={`calendar-${id}`} days={days} items={dayItems} today={today}
           columns={view === "day" && resources.length ? resources.map(resource => ({id:`member-${resource.id}`,day:date,resourceId:resource.id,header:<MemberResourceHeader label={resource.title} resource={resource} />})) : undefined}
-          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
+          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day && (m.user_id !== me?.id || !mineBlocks.some(x => x.start_at === b.start_at && x.end_at === b.end_at))).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
           onCreate={start => setInitial(calendarUtc(start,zone))}
           onSelect={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })} />
       </> : <Calendar<Item, MemberResource>
