@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, listEvents, listMembers, listTasks, localInput, shiftDate, toUtc, type CalendarEvent } from "@teamsync/shared";
+import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, listEvents, listMembers, listPersonalEvents, listTasks, localInput, shiftDate, toUtc, type CalendarEvent } from "@teamsync/shared";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -73,6 +73,12 @@ export default function CalendarPage() {
   const tasks = useQuery({queryKey:["tasks",id],queryFn:() => listTasks(id)});
   const members = useQuery({queryKey:["members",id],queryFn:() => listMembers(id)});
   const busyDays = dateRange(date,"week");
+  // 个人日历不可用时（404/网络错误）也要能判断“哪些忙碌块是我自己的”，否则会重复叠斜纹。
+  const personalEvents = useQuery({
+    queryKey: ["personal", "cross", from, to],
+    queryFn: () => listPersonalEvents(from, to),
+    staleTime: 30000,
+  });
   const availability = useQuery({queryKey:["availability",id,date,member],queryFn:() => getAvailability(id,toUtc(`${busyDays[0]}T00:00`,zone),toUtc(`${shiftDate(busyDays[6],1)}T00:00`,zone),member ? Number(member) : undefined),enabled:busy});
   const items = useMemo<Item[]>(() => [
     ...(events.data?.items || []).filter(e => e.status !== "cancelled").map(e => {
@@ -90,10 +96,19 @@ export default function CalendarPage() {
   const error = events.error || tasks.error || members.error || (busy && availability.error);
   const visibleEvents = events.data?.items ?? [];
   // 自己的活动已经作为可点事件显示，忙闲层不要再画一遍灰色斜纹。
+  // 自己的来源有三类：团队活动（我组织/参与）、个人日历事件、以及拿不到时的兜底——
+  // 只筛选“仅我”时，忙碌块本来就都是我的。
   // 统一成 `...SSZ` 再比较：数据库可能返回微秒或 +00:00，字符串直接比较会漏判。
-  const mineBlocks = visibleEvents
-    .filter(e => e.status !== "cancelled" && e.my_response !== null && e.my_response !== "declined")
-    .map(e => ({start: normalizeIso(e.start_at), end: normalizeIso(e.end_at)}));
+  const mineBlocks = [
+    ...visibleEvents
+      .filter(e => e.status !== "cancelled" && e.my_response !== null && e.my_response !== "declined")
+      .map(e => ({start: normalizeIso(e.start_at), end: normalizeIso(e.end_at)})),
+    ...(personalEvents.data?.items ?? []).map(e => ({
+      start: normalizeIso(e.start_at),
+      end: normalizeIso(e.end_at),
+    })),
+  ];
+  const onlyMine = member !== "" && Number(member) === me?.id;
   const invites = visibleEvents.filter(e => e.status === "confirmed" && e.my_response === "pending");
   const taskItems = tasks.data?.items ?? [];
   const openTasks = taskItems.filter(t => t.status !== "done").length;
@@ -148,7 +163,7 @@ export default function CalendarPage() {
           onView={next => setView(next as typeof view)} />
         <CalendarTimeline storageKey={`calendar-${id}`} days={days} items={dayItems} today={today}
           columns={view === "day" && resources.length ? resources.map(resource => ({id:`member-${resource.id}`,day:date,resourceId:resource.id,header:<MemberResourceHeader label={resource.title} resource={resource} />})) : undefined}
-          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day && (m.user_id !== me?.id || !mineBlocks.some(x => x.start === normalizeIso(b.start_at) && x.end === normalizeIso(b.end_at)))).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
+          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day && (m.user_id !== me?.id || (!onlyMine && !mineBlocks.some(x => x.start === normalizeIso(b.start_at) && x.end === normalizeIso(b.end_at))))).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
           onCreate={start => setInitial(calendarUtc(start,zone))}
           onSelect={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })} />
       </> : <Calendar<Item, MemberResource>
