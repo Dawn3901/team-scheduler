@@ -15,6 +15,7 @@ const pageLabels: Record<string, string> = {
   notifications: "通知中心",
   profile: "个人资料",
   tutorial: "新手教程",
+  about: "关于",
 };
 
 function pageLabel(pathname: string): string {
@@ -53,12 +54,14 @@ export function AppShell() {
         { to: "/app/notifications", label: "通知中心", icon: "bell" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/tutorial", label: "新手教程", icon: "help" },
+        { to: "/app/about", label: "关于", icon: "info" },
       ]
     : [
         { to: "/app", label: "我的团队", icon: "users", end: true },
         { to: "/app/notifications", label: "通知中心", icon: "bell" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/tutorial", label: "新手教程", icon: "help" },
+        { to: "/app/about", label: "关于", icon: "info" },
       ];
 
   return (
