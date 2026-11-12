@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { buildInfo } from "../buildInfo";
 import { CALENDAR_COLORS, textColorFor } from "../lib/calendarColors";
 
 const steps = [
@@ -76,6 +77,10 @@ export default function TutorialPage() {
           <Swatch color={CALENDAR_COLORS.taskNormal} label="白色：正常 / 已完成" />
         </div>
       </section>
+
+      <p className="muted tutorial-version">
+        当前版本 {buildInfo.version} · 提交 <code>{buildInfo.commit}</code>
+      </p>
 
       <div className="panel-actions">
         <Link to="/app" className="btn btn-primary">

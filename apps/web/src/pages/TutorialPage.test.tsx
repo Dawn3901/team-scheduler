@@ -16,5 +16,6 @@ describe("TutorialPage", () => {
     expect(screen.getByText("黄色：3 天内截止")).toBeInTheDocument();
     expect(screen.getByText("白色：正常 / 已完成")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "开始使用" })).toHaveAttribute("href", "/app");
+    expect(screen.getByText(/当前版本 0\.1\.0-test/)).toBeInTheDocument();
   });
 });

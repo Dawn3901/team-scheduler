@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { buildInfo, formatBuildTime } from "../buildInfo";
 import { CALENDAR_COLORS, textColorFor } from "../lib/calendarColors";
 
 const features = [
@@ -104,6 +105,18 @@ export default function AboutPage() {
           FastAPI + SQLAlchemy 2.0 + Alembic + SQLite + asyncio 定时扫描 + WebSocket；
           React 19 + Vite + TypeScript + TanStack Query + react-big-calendar；
           Electron 桌面壳；Android 原生 Kotlin WebView 壳 + AlarmManager。
+        </p>
+      </section>
+
+      <section className="about-section" aria-labelledby="about-version-title">
+        <h2 id="about-version-title">版本与构建</h2>
+        <dl className="about-version">
+          <div><dt>版本号</dt><dd data-testid="app-version">{buildInfo.version}</dd></div>
+          <div><dt>提交</dt><dd><code>{buildInfo.commit}</code></dd></div>
+          <div><dt>构建时间</dt><dd>{formatBuildTime(buildInfo.buildTime)}</dd></div>
+        </dl>
+        <p className="muted">
+          演示/部署时若行为与预期不符，先核对这里的提交号与构建时间是否与代码一致。
         </p>
       </section>
 
