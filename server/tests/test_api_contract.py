@@ -22,7 +22,7 @@ from app.security import create_access_token
 ROOT = Path(__file__).resolve().parents[2]
 DESIGN_DOC = ROOT / "docs" / "03-概要设计说明书.md"
 
-# 冻结基线：CR-009 扩为35个HTTP操作，包含 /health；集合必须完全一致。
+# 冻结基线：CR-009 35 + CR-002 4 + CR-011 1 + /me/tasks 1，共 41 个（含 /health）。
 FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/health"),
@@ -60,6 +60,12 @@ FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
         ("GET", "/api/v1/notifications"),
         ("POST", "/api/v1/notifications/read-all"),
         ("POST", "/api/v1/notifications/{notification_id}/read"),
+        ("GET", "/api/v1/me/calendar"),
+        ("POST", "/api/v1/me/events"),
+        ("PATCH", "/api/v1/me/events/{event_id}"),
+        ("DELETE", "/api/v1/me/events/{event_id}"),
+        ("GET", "/api/v1/me/team-events"),
+        ("GET", "/api/v1/me/tasks"),
     }
 )
 
@@ -177,7 +183,7 @@ def test_frozen_operation_set_matches_openapi() -> None:
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
     assert actual == set(FROZEN_OPERATIONS)
-    assert len(actual) == 35
+    assert len(actual) == 41
 
 
 def test_documented_endpoint_table_matches_frozen_contract() -> None:

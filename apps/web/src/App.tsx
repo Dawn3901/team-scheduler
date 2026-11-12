@@ -16,6 +16,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import TutorialPage from "./pages/TutorialPage";
 import AboutPage from "./pages/AboutPage";
+import MyCalendarPage from "./pages/MyCalendarPage";
 import TeamSelectPage from "./pages/TeamSelectPage";
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/tutorial" element={<TutorialPage />} />
           <Route path="/app/about" element={<AboutPage />} />
+          <Route path="/app/me/calendar" element={<MyCalendarPage />} />
           <Route path="/app" element={<TeamSelectPage />} />
 
           <Route path="/app/teams/:teamId" element={<TeamLayout />}>

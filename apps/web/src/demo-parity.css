@@ -1982,3 +1982,18 @@ body {
 .about-section .tutorial-step h2 { font-size: 15px; }
 .about-color-row { margin-top: 8px; }
 .about-list { margin: 0; padding-left: 20px; color: #475569; font-size: 13px; line-height: 1.9; }
+
+/* 我的日程（CR-002 / CAL-9） */
+.personal-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.personal-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.personal-list strong { font-size: 13px; }
+.personal-list small { display: block; color: #64748b; font-size: 12px; }
+.personal-swatch { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; }
+
+/* 关于页版本信息 */
+.about-version { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 0; }
+.about-version div { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
+.about-version dt { color: #64748b; font-size: 12px; }
+.about-version dd { margin: 4px 0 0; font-weight: 600; font-size: 13px; word-break: break-all; }
+.tutorial-version { margin: 0; font-size: 12px; }

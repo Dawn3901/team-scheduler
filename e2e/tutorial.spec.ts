@@ -22,7 +22,7 @@ test("首次登录展示新手教程，进入后不再提示", async ({ page }) 
   await page.getByRole("link", { name: "开始教程" }).click();
 
   await expect(page.getByRole("heading", { name: "5 分钟上手同频" })).toBeVisible();
-  await expect(page.getByText("蓝色：需要我参加")).toBeVisible();
+  await expect(page.getByText("蓝色：需要我参加（含我自己的私密活动）")).toBeVisible();
   await expect(page.getByText("红色：已逾期 / 24 小时内")).toBeVisible();
 
   await page.getByRole("link", { name: "开始使用" }).click();

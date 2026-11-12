@@ -1,7 +1,13 @@
 import type { CalendarEvent, Task } from "@teamsync/shared";
 import { describe, expect, it } from "vitest";
 
-import { CALENDAR_COLORS, eventColor, taskColor, textColorFor } from "./calendarColors";
+import {
+  CALENDAR_COLORS,
+  eventColor,
+  isPrivateForViewer,
+  taskColor,
+  textColorFor,
+} from "./calendarColors";
 
 const event = (overrides: Partial<CalendarEvent> = {}): Pick<CalendarEvent, "visibility" | "my_response"> => ({
   visibility: "team",
@@ -19,11 +25,25 @@ const task = (overrides: Partial<Task> = {}): Pick<Task, "status" | "overdue" | 
 const now = Date.parse("2026-11-11T12:00:00Z");
 
 describe("eventColor", () => {
-  it("需要参加为蓝色，未邀请/已拒绝为绿色，私密为灰色", () => {
+  it("需要参加为蓝色，未邀请/已拒绝为绿色", () => {
     expect(eventColor(event())).toBe(CALENDAR_COLORS.attending);
     expect(eventColor(event({ my_response: "declined" }))).toBe(CALENDAR_COLORS.notAttending);
     expect(eventColor(event({ my_response: null }))).toBe(CALENDAR_COLORS.notAttending);
-    expect(eventColor(event({ visibility: "private" }))).toBe(CALENDAR_COLORS.private);
+  });
+
+  it("我创建或参与的私密活动按蓝色算个人活动，看不到详情的私密才是灰色", () => {
+    expect(eventColor(event({ visibility: "private", my_response: "accepted" }))).toBe(
+      CALENDAR_COLORS.attending,
+    );
+    expect(eventColor(event({ visibility: "private", my_response: "tentative" }))).toBe(
+      CALENDAR_COLORS.attending,
+    );
+    expect(eventColor(event({ visibility: "private", my_response: null }))).toBe(
+      CALENDAR_COLORS.private,
+    );
+    expect(isPrivateForViewer(event({ visibility: "private", my_response: "accepted" }))).toBe(false);
+    expect(isPrivateForViewer(event({ visibility: "private", my_response: null }))).toBe(true);
+    expect(isPrivateForViewer(event())).toBe(false);
   });
 });
 

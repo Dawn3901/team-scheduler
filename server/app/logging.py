@@ -68,6 +68,7 @@ def add_request_logging(app) -> None:
                 uid = int(decode_access_token(authorization[7:])["sub"])
             except (jwt.InvalidTokenError, ValueError, TypeError, KeyError):
                 pass
+        request.state.user_id = uid
         parts = request.url.path.strip("/").split("/")
         tid = None
         if "teams" in parts:

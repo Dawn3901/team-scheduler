@@ -11,7 +11,7 @@ export default function NotificationsPage() {
   const query = useQuery({queryKey: ["notifications", offset, unread], queryFn: () => listNotifications(offset, unread)});
   const action = useAction(); const navigate = useNavigate();
   return <section className="panel"><h1>通知中心</h1>
-    <div className="panel-actions"><label><input type="checkbox" checked={unread} onChange={e => {setUnread(e.target.checked); setOffset(0);}} />仅未读</label><button className="btn btn-secondary" disabled={action.pending} onClick={() => void action.run(readAllNotifications).catch(() => {})}>全部已读</button></div>
+    <div className="panel-actions"><button className="btn btn-secondary" aria-pressed={unread} onClick={() => {setUnread(!unread); setOffset(0);}}>{unread ? "显示全部" : "仅显示未读"}</button><button className="btn btn-secondary" disabled={action.pending} onClick={() => void action.run(readAllNotifications).catch(() => {})}>全部已读</button></div>
     {query.isError && <p role="alert">{friendlyMessage(query.error)}</p>}
     {query.isPending && <p>通知加载中…</p>}
     {query.data?.items.length === 0 && <p className="muted">暂无通知</p>}

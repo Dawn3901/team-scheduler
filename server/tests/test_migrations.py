@@ -17,6 +17,7 @@ BUSINESS_TABLES = {
     "notifications",
     "event_series",
     "task_dependencies",
+    "personal_events",
 }
 
 
@@ -58,7 +59,7 @@ def test_upgrade_head_downgrade_and_upgrade_again(tmp_path: Path) -> None:
     assert {"idx_team_members_user", "idx_team_one_owner"} <= _indexes(db_path, "team_members")
     with sqlite3.connect(db_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("98643d74e9bb",)
+    assert version == ("6b4e82bbf137",)
 
     drift = _run_alembic(db_path, "check")
     assert drift.returncode == 0, drift.stdout + drift.stderr

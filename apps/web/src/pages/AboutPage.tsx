@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { buildInfo, formatBuildTime } from "../buildInfo";
 import { CALENDAR_COLORS, textColorFor } from "../lib/calendarColors";
 
 const features = [
@@ -14,6 +15,10 @@ const features = [
   {
     title: "忙闲与冲突",
     text: "周视图叠加成员忙闲；建活动时提示冲突成员与时段，提醒但不阻止保存。",
+  },
+  {
+    title: "我的日程",
+    text: "个人事件跨团队保留，默认以“忙碌”参与团队忙闲；我参加/待回应的团队活动也会只读汇总到这里。",
   },
   {
     title: "任务截止",
@@ -75,7 +80,7 @@ export default function AboutPage() {
         <div className="tutorial-color-grid">
           <Swatch color={CALENDAR_COLORS.attending} label="蓝：需要我参加" />
           <Swatch color={CALENDAR_COLORS.notAttending} label="绿：不需要我参加" />
-          <Swatch color={CALENDAR_COLORS.private} label="灰：私密活动" />
+          <Swatch color={CALENDAR_COLORS.private} label="灰：别人的私密活动" />
         </div>
         <div className="tutorial-color-grid about-color-row">
           <Swatch color={CALENDAR_COLORS.taskUrgent} label="红：逾期 / 24 小时内" />
@@ -100,6 +105,18 @@ export default function AboutPage() {
           FastAPI + SQLAlchemy 2.0 + Alembic + SQLite + asyncio 定时扫描 + WebSocket；
           React 19 + Vite + TypeScript + TanStack Query + react-big-calendar；
           Electron 桌面壳；Android 原生 Kotlin WebView 壳 + AlarmManager。
+        </p>
+      </section>
+
+      <section className="about-section" aria-labelledby="about-version-title">
+        <h2 id="about-version-title">版本与构建</h2>
+        <dl className="about-version">
+          <div><dt>版本号</dt><dd data-testid="app-version">{buildInfo.version}</dd></div>
+          <div><dt>提交</dt><dd><code>{buildInfo.commit}</code></dd></div>
+          <div><dt>构建时间</dt><dd>{formatBuildTime(buildInfo.buildTime)}</dd></div>
+        </dl>
+        <p className="muted">
+          演示/部署时若行为与预期不符，先核对这里的提交号与构建时间是否与代码一致。
         </p>
       </section>
 

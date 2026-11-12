@@ -123,6 +123,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str = "") -> None:
             await sender_task
 
 
+def publish_personal(user_id: int) -> None:
+    """CR-002：个人日历变更只发给 owner，不向团队广播，也不刷新团队查询。"""
+    emit(user_id, "personal.changed", {"resource": "personal_event"})
+
+
 def publish_resource(kind: str, resource_id: int, method: str, suffix: str = "") -> None:
     """提交后发布最小事件；私密活动 ID 只发给可见的活跃成员。"""
     from app.models import Event, Task

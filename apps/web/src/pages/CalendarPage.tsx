@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, listEvents, listMembers, listTasks, localInput, shiftDate, toUtc, type CalendarEvent } from "@teamsync/shared";
+import { calendarDate, calendarUtc, dateRange, formatTime, getAvailability, listEvents, listMembers, listPersonalEvents, listTasks, localInput, shiftDate, toUtc, type CalendarEvent, type PersonalEvent } from "@teamsync/shared";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -10,11 +10,12 @@ import CalendarTimeline from "../components/CalendarTimeline";
 import FindTimePanel from "../components/FindTimePanel";
 import EventEditor from "../components/EventEditor";
 import { useMe, useTeam } from "../hooks/useSession";
-import { borderColorFor, eventColor, taskColor } from "../lib/calendarColors";
+import { borderColorFor, CALENDAR_COLORS, eventColor, taskColor } from "../lib/calendarColors";
+import { normalizeIso } from "../lib/calendarDedupe";
 import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
-interface Item { id:string; title:string; label:string; timeLabel:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; resourceId?:number; }
+interface Item { id:string; title:string; label:string; timeLabel:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; resourceId?:number; personal?:PersonalEvent; }
 interface MemberResource { id:number; title:string; role:string; color:string; }
 
 function CalendarEventBlock({ event }: { event: Item }) {
@@ -72,6 +73,12 @@ export default function CalendarPage() {
   const tasks = useQuery({queryKey:["tasks",id],queryFn:() => listTasks(id)});
   const members = useQuery({queryKey:["members",id],queryFn:() => listMembers(id)});
   const busyDays = dateRange(date,"week");
+  // 个人日历不可用时（404/网络错误）也要能判断“哪些忙碌块是我自己的”，否则会重复叠斜纹。
+  const personalEvents = useQuery({
+    queryKey: ["personal", "cross", from, to],
+    queryFn: () => listPersonalEvents(from, to),
+    staleTime: 30000,
+  });
   const availability = useQuery({queryKey:["availability",id,date,member],queryFn:() => getAvailability(id,toUtc(`${busyDays[0]}T00:00`,zone),toUtc(`${shiftDate(busyDays[6],1)}T00:00`,zone),member ? Number(member) : undefined),enabled:busy});
   const items = useMemo<Item[]>(() => [
     ...(events.data?.items || []).filter(e => e.status !== "cancelled").map(e => {
@@ -88,6 +95,25 @@ export default function CalendarPage() {
   ],[events.data,tasks.data,member,zone]);
   const error = events.error || tasks.error || members.error || (busy && availability.error);
   const visibleEvents = events.data?.items ?? [];
+  // 自己的活动已经作为可点事件显示，忙闲层不要再画一遍灰色斜纹。
+  // 自己的来源有三类：团队活动（我组织/参与）、个人日历事件、以及拿不到时的兜底——
+  // 只筛选“仅我”时，忙碌块本来就都是我的。
+  // 统一成 `...SSZ` 再比较：数据库可能返回微秒或 +00:00，字符串直接比较会漏判。
+  const mineBlocks = [
+    ...visibleEvents
+      .filter(e => e.status !== "cancelled" && e.my_response !== null && e.my_response !== "declined")
+      .map(e => ({start: normalizeIso(e.start_at), end: normalizeIso(e.end_at)})),
+    ...(personalEvents.data?.items ?? []).map(e => ({
+      start: normalizeIso(e.start_at),
+      end: normalizeIso(e.end_at),
+    })),
+  ];
+  const onlyMine = member !== "" && Number(member) === me?.id;
+  // 「仅我 / 我的活动」时把自己的个人事件也画成可点事件（灰色=私人），而不是忙闲斜纹。
+  const myPersonal = useMemo(
+    () => (onlyMine ? (personalEvents.data?.items ?? []) : []),
+    [onlyMine, personalEvents.data],
+  );
   const invites = visibleEvents.filter(e => e.status === "confirmed" && e.my_response === "pending");
   const taskItems = tasks.data?.items ?? [];
   const openTasks = taskItems.filter(t => t.status !== "done").length;
@@ -101,9 +127,24 @@ export default function CalendarPage() {
   const todayLabel = format(new Date(), "M月d日 EEEE", {locale:zhCN});
   const resourceColors = ["#6366f1", "#0f9f8f", "#d97706", "#db2777", "#2563eb"];
   const resources: MemberResource[] = (members.data?.items || []).map((m, i) => ({ id:m.user_id, title:m.display_name, role:m.role, color:resourceColors[i % resourceColors.length] }));
+  const personalItems = useMemo<Item[]>(() => myPersonal.map(e => ({
+    id: `p${e.id}`,
+    title: `${e.title}（个人）`,
+    label: e.title,
+    timeLabel: e.all_day ? "全天" : formatTime(e.start_at,zone).split(" ").at(-1) + "–" + formatTime(e.end_at,zone).split(" ").at(-1),
+    start: calendarDate(e.start_at,zone),
+    end: calendarDate(e.end_at,zone),
+    allDay: e.all_day,
+    color: CALENDAR_COLORS.private,
+    personal: e,
+  })), [myPersonal, zone]);
   const dayItems = useMemo<Item[]>(() => {
-    if (view !== "day") return items;
-    return items.flatMap(item => {
+    const all = [...items, ...personalItems];
+    if (view !== "day") return all;
+    return all.flatMap(item => {
+      if (item.personal) {
+        return [{ ...item, id: `${item.id}-u${me?.id ?? 0}`, resourceId: me?.id }];
+      }
       if (item.event) {
         const ids = Array.from(new Set(item.event.participants.map(p => p.user_id)));
         return (ids.length ? ids : [item.event.created_by]).map(uid => ({ ...item, id:`${item.id}-u${uid}`, resourceId:uid }));
@@ -114,7 +155,7 @@ export default function CalendarPage() {
       }
       return [item];
     });
-  }, [items, view, tasks.data]);
+  }, [items, personalItems, me?.id, view, tasks.data]);
 
   return <section className="calendar-page">
     <div className="calendar-card">
@@ -132,6 +173,7 @@ export default function CalendarPage() {
       <div className="calendar-filterbar">
         <label>成员筛选<select value={member} onChange={e => setMember(e.target.value)}><option value="">全部成员</option><option value={me?.id}>仅我 / 我的活动</option>{members.data?.items.filter(m => m.user_id !== me?.id).map(m => <option key={m.user_id} value={m.user_id}>{m.display_name}</option>)}</select></label>
         <label><input type="checkbox" checked={busy} onChange={e => setBusy(e.target.checked)} />显示周忙闲</label>
+        {onlyMine ? <p className="muted calendar-hint">灰色块是你的个人日程（仅你可见），不在团队活动里</p> : null}
       </div>
       {!!error && <p role="alert" className="calendar-error">{friendlyMessage(error)} <button className="btn btn-sm btn-secondary" onClick={() => {void events.refetch(); void tasks.refetch();}}>重试</button></p>}
       {events.isPending && <p className="calendar-loading">日历加载中…</p>}
@@ -142,18 +184,18 @@ export default function CalendarPage() {
           onView={next => setView(next as typeof view)} />
         <CalendarTimeline storageKey={`calendar-${id}`} days={days} items={dayItems} today={today}
           columns={view === "day" && resources.length ? resources.map(resource => ({id:`member-${resource.id}`,day:date,resourceId:resource.id,header:<MemberResourceHeader label={resource.title} resource={resource} />})) : undefined}
-          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
+          backgroundItems={busy ? (availability.data?.members || []).flatMap(m => m.blocks.filter(b => b.title === null && !b.all_day && (m.user_id !== me?.id || (!onlyMine && !mineBlocks.some(x => x.start === normalizeIso(b.start_at) && x.end === normalizeIso(b.end_at))))).map((b,i) => ({id:`busy-${m.user_id}-${i}`,title:"私密忙碌",start:calendarDate(b.start_at,zone),end:calendarDate(b.end_at,zone),allDay:false,color:"#64748b",resourceId:m.user_id}))) : []}
           onCreate={start => setInitial(calendarUtc(start,zone))}
-          onSelect={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })} />
+          onSelect={item => { if (item.personal) return; navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } }); }} />
       </> : <Calendar<Item, MemberResource>
         localizer={localizer} culture="zh-CN" date={new Date(`${date}T12:00`)} view={view} views={["month","week","day"]}
-        events={items}
+        events={view === "month" ? [...items, ...personalItems] : items}
         startAccessor="start" endAccessor="end" selectable popup step={60} timeslots={1}
         components={{ toolbar: CalendarToolbar, event: CalendarEventBlock }}
         onNavigate={d => setDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`)}
         onView={v => setView(v as View as typeof view)}
         onSelectSlot={slot => setInitial(calendarUtc(slot.start,zone))}
-        onSelectEvent={item => navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } })}
+        onSelectEvent={item => { if (item.personal) return; navigate(`/app/teams/${id}/${item.event ? `events/${item.event.id}` : `tasks?task=${item.taskId}`}`, { state: { fromCalendar: location.pathname } }); }}
         eventPropGetter={item => ({style:{backgroundColor:`color-mix(in srgb, ${item.color} 10%, white)`,borderColor:`color-mix(in srgb, ${borderColorFor(item.color)} 35%, white)`,borderLeft:`3px solid ${borderColorFor(item.color)}`,color:"#111827"}})}
         messages={{today:"今天",previous:"上一页",next:"下一页",month:"月",week:"周",day:"日",agenda:"日程",date:"日期",time:"时间",event:"活动",allDay:"全天 / 截止",noEventsInRange:"本时段暂无活动",showMore:n => `另 ${n} 项`}}
         style={{height:700}}

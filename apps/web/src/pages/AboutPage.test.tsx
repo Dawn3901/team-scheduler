@@ -16,5 +16,7 @@ describe("AboutPage", () => {
     expect(screen.getByText("红：逾期 / 24 小时内")).toBeInTheDocument();
     expect(screen.getByText("不做 IM、视频会议、附件、评论、多日历。")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "去看新手教程" })).toHaveAttribute("href", "/app/tutorial");
+    expect(screen.getByTestId("app-version")).toHaveTextContent("0.1.0-test");
+    expect(screen.getByText("testcommit")).toBeInTheDocument();
   });
 });

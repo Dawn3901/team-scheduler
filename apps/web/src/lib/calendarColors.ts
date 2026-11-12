@@ -1,10 +1,11 @@
 import type { CalendarEvent, Task } from "@teamsync/shared";
 
 /**
- * 日历颜色语义（CAL-6 调整）：
- * - 活动：需要参加=蓝、不需要=绿、私密=灰；
+ * 日历颜色语义（CAL-6 调整，CR-012 修订）：
+ * - 活动：需要参加=蓝、不需要=绿、别人看不到的私密=灰；
  * - 任务：逾期/24 小时内=红、3 天内=黄、正常/已完成=白。
  * 颜色只表达“我要不要处理”，不再按创建者或自定义色区分。
+ * 私密只对“看不到详情的人”才是灰色；我自己创建/参与的私密活动我能看到，按蓝色处理。
  */
 export const CALENDAR_COLORS = {
   attending: "#2563eb",
@@ -15,8 +16,15 @@ export const CALENDAR_COLORS = {
   taskNormal: "#ffffff",
 } as const;
 
+export function isPrivateForViewer(
+  event: Pick<CalendarEvent, "visibility" | "my_response">,
+): boolean {
+  // my_response 非空说明我是组织者或仍有效的参与者，此时私密活动对我可见。
+  return event.visibility === "private" && event.my_response === null;
+}
+
 export function eventColor(event: Pick<CalendarEvent, "visibility" | "my_response">): string {
-  if (event.visibility === "private") {
+  if (isPrivateForViewer(event)) {
     return CALENDAR_COLORS.private;
   }
   return event.my_response !== null && event.my_response !== "declined"

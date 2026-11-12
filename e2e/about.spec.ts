@@ -19,4 +19,7 @@ test("侧栏“关于”展示项目介绍与边界", async ({ page }) => {
   await expect(page.getByText("蓝：需要我参加")).toBeVisible();
   await expect(page.getByText("不做 IM、视频会议、附件、评论、多日历。")).toBeVisible();
   await expect(page.getByRole("link", { name: "去看新手教程" })).toBeVisible();
+  // 版本与构建信息：来自构建期注入，不是运行时猜测。
+  await expect(page.getByRole("heading", { name: "版本与构建" })).toBeVisible();
+  await expect(page.getByTestId("app-version")).toHaveText(/^\d+\.\d+\.\d+/);
 });
