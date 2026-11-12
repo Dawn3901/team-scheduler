@@ -20,7 +20,7 @@ from app.schemas_work import (
     TaskCreate,
     TaskPatch,
 )
-from app.services import dependencies, recurrence
+from app.services import dependencies, personal, recurrence
 from app.services import work as service
 from app.services.suggestions import suggestions
 
@@ -148,6 +148,7 @@ def availability(
     service.validate_ids(db, ctx.team.id, ids, "INVALID_PARTICIPANT")
     members = []
     events = service.overlapping(db, ctx.team.id, start, end)
+    personal_busy = personal.team_busy_blocks(db, ctx.team.id, ids, start, end)
     for uid in sorted(ids):
         blocks = []
         for event in events:
@@ -156,6 +157,8 @@ def availability(
                 for p in service.participants(db, event.id)
             ):
                 blocks.append({**service.busy_block(db, event, user.id), "busy": True})
+        blocks.extend(personal_busy.get(uid, []))
+        blocks.sort(key=lambda block: block["start_at"] or "")
         members.append(
             {"user_id": uid, "display_name": db.get(User, uid).display_name, "blocks": blocks}
         )

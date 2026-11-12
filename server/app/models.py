@@ -24,7 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 
-__all__ = ["Base", "Team", "TeamMember", "User", "now_utc"]
+__all__ = ["Base", "PersonalEvent", "Team", "TeamMember", "User", "now_utc"]
 
 
 def now_utc() -> datetime:
@@ -225,6 +225,38 @@ class EventSeries(Base):
         DateTime(timezone=True), default=now_utc, onupdate=now_utc
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PersonalEvent(Base):
+    """用户级个人日历（CR-002 / CAL-9）：跨团队、仅 owner 可见，默认参与团队忙闲。"""
+
+    __tablename__ = "personal_events"
+    __table_args__ = (
+        CheckConstraint("start_at < end_at", name="ck_personal_events_time"),
+        CheckConstraint("all_day IN (0,1)", name="ck_personal_events_all_day"),
+        CheckConstraint("share_busy IN (0,1)", name="ck_personal_events_share_busy"),
+        Index("ix_personal_events_user_start", "user_id", "start_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    all_day: Mapped[bool] = mapped_column(default=False)
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    color: Mapped[str | None] = mapped_column(String, nullable=True)
+    share_busy: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=now_utc
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=now_utc, onupdate=now_utc
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class TaskDependency(Base):

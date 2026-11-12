@@ -17,12 +17,13 @@ from app.models import Event, Task, TeamMember
 from app.realtime.channel import (
     emit,
     lifespan,
+    publish_personal,
     publish_resource,
     refresh_notifications,
     refresh_team,
 )
 from app.realtime.channel import router as ws_router
-from app.routers import auth, health, teams, work
+from app.routers import auth, health, personal, teams, work
 
 API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 WEB_CSP = (
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(teams.router, prefix=settings.api_v1_prefix)
     app.include_router(work.router, prefix=settings.api_v1_prefix)
+    app.include_router(personal.router, prefix=settings.api_v1_prefix)
     app.include_router(ws_router, prefix=settings.api_v1_prefix)
 
     @app.middleware("http")
@@ -100,6 +102,12 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         if request.method in {"POST", "PATCH", "DELETE"} and response.status_code < 300:
             parts = request.url.path.removeprefix(settings.api_v1_prefix).strip("/").split("/")
+            if parts and parts[0] == "me":
+                # CR-002：个人日历只通知 owner，不触发团队广播。
+                user_id = getattr(request.state, "user_id", None)
+                if user_id:
+                    publish_personal(int(user_id))
+                return response
             with SessionLocal() as db:
                 team_ids = []
                 if len(parts) > 1 and parts[1].isdigit():
