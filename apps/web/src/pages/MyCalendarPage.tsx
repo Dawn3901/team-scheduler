@@ -3,14 +3,17 @@ import {
   createPersonalEvent,
   deletePersonalEvent,
   formatTime,
+  listMyTeamEvents,
   listPersonalEvents,
   localInput,
   shiftDate,
   toUtc,
   updatePersonalEvent,
+  type MyTeamEvent,
   type PersonalEvent,
 } from "@teamsync/shared";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
@@ -41,16 +44,37 @@ export default function MyCalendarPage() {
     queryKey: ["personal", from, to],
     queryFn: () => listPersonalEvents(from, to),
   });
+  // CR-011：团队里“我要参加/待回应”的活动以只读方式并入个人日历，不复制数据。
+  const teamFeed = useQuery({
+    queryKey: ["personal-team-events", from, to],
+    queryFn: () => listMyTeamEvents(from, to),
+  });
 
-  const groups = useMemo(() => {
-    const items = [...(query.data?.items ?? [])].sort((a, b) => a.start_at.localeCompare(b.start_at));
+  const teamByDay = useMemo(() => {
+    const map = new Map<string, MyTeamEvent[]>();
+    for (const item of [...(teamFeed.data?.attending ?? []), ...(teamFeed.data?.invites ?? [])]) {
+      map.set(item.local_date, [...(map.get(item.local_date) ?? []), item]);
+    }
+    return map;
+  }, [teamFeed.data]);
+
+  const personalByDay = useMemo(() => {
     const map = new Map<string, PersonalEvent[]>();
-    for (const item of items) {
+    for (const item of query.data?.items ?? []) {
       const day = localInput(item.start_at, zone).slice(0, 10);
       map.set(day, [...(map.get(day) ?? []), item]);
     }
-    return [...map.entries()];
-  }, [query.data]);
+    return map;
+  }, [query.data, zone]);
+
+  const days = useMemo(() => {
+    const all = [...personalByDay.keys(), ...teamByDay.keys()].sort();
+    return all.map((day) => ({
+      day,
+      personal: personalByDay.get(day) ?? [],
+      team: teamByDay.get(day) ?? [],
+    }));
+  }, [personalByDay, teamByDay]);
 
   const edit = editing && editing !== "new" ? editing : null;
   const today = new Date().toISOString().slice(0, 10);
@@ -62,7 +86,7 @@ export default function MyCalendarPage() {
           <p className="eyebrow">个人空间</p>
           <h1>我的日程</h1>
           <p className="muted">
-            个人事件只属于你，跨团队保留；默认以“忙碌”参与团队忙闲，队友看不到标题。
+            这里汇总「我参加的团队活动」与「我的个人安排」；团队活动来自各团队，个人事件只属于你、默认以“忙碌”参与团队忙闲。
           </p>
         </div>
         <div className="panel-actions">
@@ -90,8 +114,9 @@ export default function MyCalendarPage() {
       </div>
 
       {query.isError && <p role="alert">{friendlyMessage(query.error)}</p>}
+      {teamFeed.isError && <p role="alert">{friendlyMessage(teamFeed.error)}</p>}
       {query.isPending && <p>我的日程加载中…</p>}
-      {query.data?.total === 0 && (
+      {query.data?.total === 0 && (teamFeed.data?.attending.length ?? 0) === 0 && (teamFeed.data?.invites.length ?? 0) === 0 && (
         <div className="empty-state">
           <h2>还没有个人事件</h2>
           <p className="muted">面试、通勤、兼职、考试……都可以放在这里，不影响团队日历。</p>
@@ -101,13 +126,48 @@ export default function MyCalendarPage() {
         </div>
       )}
 
-      {groups.map(([day, items]) => (
+      {days.map(({ day, personal: items, team }) => (
         <article className="work-row personal-day" key={day}>
           <div>
             <strong>{day}</strong>
-            <p className="muted">{items.length} 项个人安排</p>
+            <p className="muted">
+              {items.length === 0
+                ? `${team.length} 项团队活动`
+                : team.length === 0
+                  ? `${items.length} 项个人安排`
+                  : `${items.length} 项个人 · ${team.length} 项团队`}
+            </p>
           </div>
           <ul className="personal-list">
+            {team.map((item) => (
+              <li key={`team-${item.id}`}>
+                <span
+                  className="personal-swatch personal-swatch-team"
+                  style={{ backgroundColor: item.my_response === "pending" ? "#16a34a" : "#2563eb", color: "#ffffff" }}
+                  aria-hidden="true"
+                >
+                  {item.my_response === "pending" ? "邀" : "会"}
+                </span>
+                <span>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.all_day ? "全天" : `${formatTime(item.start_at, zone)} – ${formatTime(item.end_at, zone).split(" ").at(-1)}`}
+                    {item.location ? ` · ${item.location}` : ""}
+                    {" · "}
+                    {item.team_name}
+                    {item.my_response === "pending" ? " · 待我回应" : item.needs_confirmation ? " · 待重新确认" : ""}
+                  </small>
+                </span>
+                <span className="panel-actions">
+                  <Link
+                    className="btn btn-ghost btn-sm"
+                    to={`/app/teams/${item.team_id}/events/${item.id}`}
+                  >
+                    查看活动
+                  </Link>
+                </span>
+              </li>
+            ))}
             {items.map((item) => (
               <li key={item.id}>
                 <span

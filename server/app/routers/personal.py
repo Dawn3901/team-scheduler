@@ -10,6 +10,8 @@ from app.db import get_db
 from app.deps import CurrentUser
 from app.schemas_personal import PersonalEventCreate, PersonalEventPatch
 from app.services import personal
+from app.services.team_feed import my_team_events
+from app.services.work import validate_range
 
 router = APIRouter(tags=["personal"])
 
@@ -39,3 +41,10 @@ def patch_event(event_id: int, user: CurrentUser, db: Db, payload: PersonalEvent
 def delete_event(event_id: int, user: CurrentUser, db: Db):
     personal.delete(db, personal.get_owned(db, event_id, user))
     return Response(status_code=204)
+
+
+@router.get("/me/team-events")
+def team_events(user: CurrentUser, db: Db, start: From, end: To):
+    """CR-011：跨团队“我要参加/待回应”的活动，只读视图，不复制数据。"""
+    start, end = validate_range(start, end, personal.MAX_RANGE_DAYS)
+    return my_team_events(db, user, start, end)

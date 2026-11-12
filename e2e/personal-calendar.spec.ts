@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function setupOwner(page: Page) {
   const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+  const teamName = `个人日历团队${suffix}`;
   await page.goto("/register");
   await page.evaluate(() => sessionStorage.clear());
   await page.getByLabel("用户名").fill(`personal_${suffix}`);
@@ -9,15 +10,20 @@ async function setupOwner(page: Page) {
   await page.getByLabel("密码").fill("e2e-correct-horse");
   await page.getByRole("button", { name: "注册并登录" }).click();
   await page.getByRole("button", { name: "创建团队" }).click();
-  await page.getByLabel("团队名称").fill(`个人日历团队${suffix}`);
+  await page.getByLabel("团队名称").fill(teamName);
   await page.getByRole("form", { name: "创建团队表单" }).getByRole("button", { name: "创建团队" }).click();
   await expect(page.getByRole("heading", { name: "团队日历", exact: true })).toBeVisible();
-  return (await page.locator(".invite-code").textContent())!.trim();
+  const teamId = new URL(page.url()).pathname.match(/teams\/(\d+)/)?.[1] ?? "";
+  return {
+    inviteCode: (await page.locator(".invite-code").textContent())!.trim(),
+    teamName,
+    teamId,
+  };
 }
 
 test("个人日程可增删改，并在团队忙闲中只显示忙碌", async ({ browser }) => {
   const owner = await browser.newPage();
-  const inviteCode = await setupOwner(owner);
+  const { inviteCode, teamId } = await setupOwner(owner);
 
   await owner.getByRole("link", { name: "我的日程" }).click();
   await expect(owner.getByRole("heading", { name: "我的日程" })).toBeVisible();
@@ -35,6 +41,16 @@ test("个人日程可增删改，并在团队忙闲中只显示忙碌", async ({
 
   await expect(owner.getByText("个人面试")).toBeVisible();
   await expect(owner.getByText(/参与团队忙闲/).first()).toBeVisible();
+
+  // CR-011：团队里自己参与的活动以只读方式并入“我的日程”。
+  await owner.goto(`/app/teams/${teamId}/calendar`);
+  await expect(owner.getByRole("heading", { name: "团队日历", exact: true })).toBeVisible();
+  await owner.getByRole("button", { name: "新建活动", exact: true }).click();
+  const eventDialog = owner.getByRole("dialog", { name: "新建活动" });
+  await eventDialog.getByLabel("活动标题").fill("团队周会");
+  await eventDialog.getByRole("button", { name: "保存活动" }).click();
+  await owner.getByRole("link", { name: "我的日程" }).click();
+  await expect(owner.getByText("团队周会")).toBeVisible();
 
   const mate = await browser.newPage();
   const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;

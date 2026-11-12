@@ -229,3 +229,73 @@ def test_personal_events_absent_from_team_event_list(client, people):
         headers=headers(mate),
     )
     assert events.json()["total"] == 0
+
+
+def test_my_team_events_projects_my_participation(client, people):
+    team, owner, mate, outsider, headers = people
+    start = datetime(2027, 3, 5, 2, 0, tzinfo=UTC)
+    created = client.post(
+        f"/api/v1/teams/{team.id}/events",
+        json={
+            "title": "团队评审",
+            "start_at": start.isoformat(),
+            "end_at": (start + timedelta(hours=1)).isoformat(),
+            "participant_ids": [owner.id, mate.id],
+        },
+        headers=headers(owner),
+    )
+    assert created.status_code == 201, created.text
+    event_id = created.json()["id"]
+
+    owner_feed = client.get(
+        "/api/v1/me/team-events",
+        params={"from": "2027-03-05T00:00:00Z", "to": "2027-03-06T00:00:00Z"},
+        headers=headers(owner),
+    )
+    assert owner_feed.status_code == 200
+    feed = owner_feed.json()
+    assert feed["attending"][0]["id"] == event_id
+    assert feed["attending"][0]["team_name"]
+    assert feed["invites"] == []
+
+    mate_feed = client.get(
+        "/api/v1/me/team-events",
+        params={"from": "2027-03-05T00:00:00Z", "to": "2027-03-06T00:00:00Z"},
+        headers=headers(mate),
+    ).json()
+    assert mate_feed["attending"] == []
+    assert [item["id"] for item in mate_feed["invites"]] == [event_id]
+
+    client.patch(
+        f"/api/v1/events/{event_id}/rsvp", json={"response": "declined"}, headers=headers(mate)
+    )
+    after_decline = client.get(
+        "/api/v1/me/team-events",
+        params={"from": "2027-03-05T00:00:00Z", "to": "2027-03-06T00:00:00Z"},
+        headers=headers(mate),
+    ).json()
+    assert after_decline == {"attending": [], "invites": []}
+
+    outsider_feed = client.get(
+        "/api/v1/me/team-events",
+        params={"from": "2027-03-05T00:00:00Z", "to": "2027-03-06T00:00:00Z"},
+        headers=headers(outsider),
+    ).json()
+    assert outsider_feed == {"attending": [], "invites": []}
+
+
+def test_my_team_events_validate_range(client, people):
+    team, owner, mate, outsider, headers = people
+    too_wide = client.get(
+        "/api/v1/me/team-events",
+        params={"from": "2027-01-01T00:00:00Z", "to": "2027-06-01T00:00:00Z"},
+        headers=headers(owner),
+    )
+    assert too_wide.status_code == 422
+    assert (
+        client.get(
+            "/api/v1/me/team-events",
+            params={"from": "2027-03-05T00:00:00Z", "to": "2027-03-06T00:00:00Z"},
+        ).status_code
+        == 401
+    )

@@ -80,3 +80,17 @@ describe("personal calendar api", () => {
     expect(fetchMock.mock.calls[2][1]?.method).toBe("DELETE");
   });
 });
+
+describe("my team events feed", () => {
+  it("按范围请求 /me/team-events", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ attending: [], invites: [] }),
+    );
+
+    const { listMyTeamEvents } = await import("./personal");
+    const result = await listMyTeamEvents("2027-03-01T00:00:00Z", "2027-03-08T00:00:00Z");
+
+    expect(result).toEqual({ attending: [], invites: [] });
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/me/team-events?from=");
+  });
+});
