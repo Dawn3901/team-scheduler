@@ -65,9 +65,9 @@ export default function TutorialPage() {
         <h2 id="tutorial-colors-title">日历颜色速查</h2>
         <h3>活动</h3>
         <div className="tutorial-color-grid">
-          <Swatch color={CALENDAR_COLORS.attending} label="蓝色：需要我参加" />
+          <Swatch color={CALENDAR_COLORS.attending} label="蓝色：需要我参加（含我自己的私密活动）" />
           <Swatch color={CALENDAR_COLORS.notAttending} label="绿色：不需要我参加 / 已拒绝" />
-          <Swatch color={CALENDAR_COLORS.private} label="灰色：私密活动" />
+          <Swatch color={CALENDAR_COLORS.private} label="灰色：别人的私密活动（只看到忙碌）" />
         </div>
         <h3>任务截止</h3>
         <div className="tutorial-color-grid">

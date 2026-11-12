@@ -79,7 +79,7 @@ export default function AboutPage() {
         <div className="tutorial-color-grid">
           <Swatch color={CALENDAR_COLORS.attending} label="蓝：需要我参加" />
           <Swatch color={CALENDAR_COLORS.notAttending} label="绿：不需要我参加" />
-          <Swatch color={CALENDAR_COLORS.private} label="灰：私密活动" />
+          <Swatch color={CALENDAR_COLORS.private} label="灰：别人的私密活动" />
         </div>
         <div className="tutorial-color-grid about-color-row">
           <Swatch color={CALENDAR_COLORS.taskUrgent} label="红：逾期 / 24 小时内" />
