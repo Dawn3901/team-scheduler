@@ -21,7 +21,24 @@ def utc(value: datetime) -> datetime:
 
 
 def timestamp(value: datetime | None) -> str | None:
+    """统一 UTC ISO 8601（带 Z）；与文本既有格式兼容，供前端字符串比较。"""
     return _utc_iso(value) if value else None
+
+
+def normalized_time(value: str | None) -> str | None:
+    """把任意 ISO 字符串规范成 `YYYY-MM-DDTHH:MM:SSZ`；无法解析返回 None。
+
+    数据库可能返回 "." 或 "Z" 两种形式；前端比较自身活动与忙闲块前先调用此函数。
+    """
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return _utc_iso(parsed)
 
 
 def text_value(value: str | None, maximum: int, required: bool = False) -> str | None:

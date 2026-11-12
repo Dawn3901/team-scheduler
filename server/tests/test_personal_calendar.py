@@ -299,3 +299,56 @@ def test_my_team_events_validate_range(client, people):
         ).status_code
         == 401
     )
+
+
+def test_my_open_tasks_lists_assignee_tasks(client, people):
+    team, owner, mate, outsider, headers = people
+    start = datetime(2027, 4, 1, 2, 0, tzinfo=UTC)
+    overdue = client.post(
+        f"/api/v1/teams/{team.id}/tasks",
+        json={
+            "title": "逾期任务",
+            "assignee_id": owner.id,
+            "due_at": "2026-01-01T02:00:00Z",
+            "priority": "high",
+        },
+        headers=headers(owner),
+    )
+    assert overdue.status_code == 201, overdue.text
+    soon_due = datetime.now(UTC) + timedelta(days=5)
+    soon = client.post(
+        f"/api/v1/teams/{team.id}/tasks",
+        json={
+            "title": "即将到期",
+            "assignee_id": owner.id,
+            "due_at": soon_due.isoformat(),
+            "priority": "normal",
+        },
+        headers=headers(owner),
+    )
+    assert soon.status_code == 201
+    others = client.post(
+        f"/api/v1/teams/{team.id}/tasks",
+        json={
+            "title": "别人的任务",
+            "assignee_id": mate.id,
+            "due_at": start.isoformat(),
+            "priority": "normal",
+        },
+        headers=headers(owner),
+    )
+    assert others.status_code == 201
+
+    feed = client.get("/api/v1/me/tasks", headers=headers(owner))
+    assert feed.status_code == 200
+    body = feed.json()
+    assert [t["title"] for t in body["overdue"]] == ["逾期任务"]
+    assert "即将到期" in [t["title"] for t in body["upcoming"]]
+    assert all(t["title"] != "别人的任务" for t in body["upcoming"])
+
+    completed = client.post(
+        f"/api/v1/tasks/{overdue.json()['id']}/complete", headers=headers(owner)
+    )
+    assert completed.status_code == 200
+    after = client.get("/api/v1/me/tasks", headers=headers(owner)).json()
+    assert all(t["title"] != "逾期任务" for t in after["overdue"])

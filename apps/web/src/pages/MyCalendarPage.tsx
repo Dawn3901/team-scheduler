@@ -3,12 +3,14 @@ import {
   createPersonalEvent,
   deletePersonalEvent,
   formatTime,
+  listMyTasks,
   listMyTeamEvents,
   listPersonalEvents,
   localInput,
   shiftDate,
   toUtc,
   updatePersonalEvent,
+  type MyTask,
   type MyTeamEvent,
   type PersonalEvent,
 } from "@teamsync/shared";
@@ -18,6 +20,7 @@ import { Link } from "react-router-dom";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
 import { textColorFor } from "../lib/calendarColors";
+import { isAlsoInTeam } from "../lib/calendarDedupe";
 import { friendlyMessage } from "../lib/errors";
 
 const shareColor = "#7c3aed";
@@ -50,6 +53,9 @@ export default function MyCalendarPage() {
     queryFn: () => listMyTeamEvents(from, to),
   });
 
+  // CR-012：指派给我、未完成、逾期或 30 天内到期的任务，按截止日进入当天。
+  const taskFeed = useQuery({ queryKey: ["personal-tasks"], queryFn: () => listMyTasks() });
+
   const teamByDay = useMemo(() => {
     const map = new Map<string, MyTeamEvent[]>();
     for (const item of [...(teamFeed.data?.attending ?? []), ...(teamFeed.data?.invites ?? [])]) {
@@ -58,23 +64,41 @@ export default function MyCalendarPage() {
     return map;
   }, [teamFeed.data]);
 
+  const teamAll = useMemo(
+    () => [...(teamFeed.data?.attending ?? []), ...(teamFeed.data?.invites ?? [])],
+    [teamFeed.data],
+  );
+
+  const taskByDay = useMemo(() => {
+    const map = new Map<string, MyTask[]>();
+    const all = [...(taskFeed.data?.overdue ?? []), ...(taskFeed.data?.upcoming ?? [])];
+    for (const task of all) {
+      const day = localInput(task.due_at, zone).slice(0, 10);
+      map.set(day, [...(map.get(day) ?? []), task]);
+    }
+    return map;
+  }, [taskFeed.data, zone]);
+
   const personalByDay = useMemo(() => {
     const map = new Map<string, PersonalEvent[]>();
     for (const item of query.data?.items ?? []) {
+      // 同一条团队活动既在“我参加的活动”又在个人事件里时优先显示可点活动。
+      if (isAlsoInTeam(item, teamAll)) continue;
       const day = localInput(item.start_at, zone).slice(0, 10);
       map.set(day, [...(map.get(day) ?? []), item]);
     }
     return map;
-  }, [query.data, zone]);
+  }, [query.data, teamAll, zone]);
 
   const days = useMemo(() => {
-    const all = [...personalByDay.keys(), ...teamByDay.keys()].sort();
+    const all = [...personalByDay.keys(), ...teamByDay.keys(), ...taskByDay.keys()].sort();
     return all.map((day) => ({
       day,
       personal: personalByDay.get(day) ?? [],
       team: teamByDay.get(day) ?? [],
+      tasks: taskByDay.get(day) ?? [],
     }));
-  }, [personalByDay, teamByDay]);
+  }, [personalByDay, teamByDay, taskByDay]);
 
   const edit = editing && editing !== "new" ? editing : null;
   const today = new Date().toISOString().slice(0, 10);
@@ -86,7 +110,7 @@ export default function MyCalendarPage() {
           <p className="eyebrow">个人空间</p>
           <h1>我的日程</h1>
           <p className="muted">
-            这里汇总「我参加的团队活动」与「我的个人安排」；团队活动来自各团队，个人事件只属于你、默认以“忙碌”参与团队忙闲。
+            这里汇总「我参加的团队活动」「我的个人安排」与「指派给我的任务」；团队活动和个人事件来自你的账号，任务以截止日出现、完成后自动消失。
           </p>
         </div>
         <div className="panel-actions">
@@ -116,7 +140,11 @@ export default function MyCalendarPage() {
       {query.isError && <p role="alert">{friendlyMessage(query.error)}</p>}
       {teamFeed.isError && <p role="alert">{friendlyMessage(teamFeed.error)}</p>}
       {query.isPending && <p>我的日程加载中…</p>}
-      {query.data?.total === 0 && (teamFeed.data?.attending.length ?? 0) === 0 && (teamFeed.data?.invites.length ?? 0) === 0 && (
+      {query.data?.total === 0 &&
+        (teamFeed.data?.attending.length ?? 0) === 0 &&
+        (teamFeed.data?.invites.length ?? 0) === 0 &&
+        (taskFeed.data?.overdue.length ?? 0) === 0 &&
+        (taskFeed.data?.upcoming.length ?? 0) === 0 && (
         <div className="empty-state">
           <h2>还没有个人事件</h2>
           <p className="muted">面试、通勤、兼职、考试……都可以放在这里，不影响团队日历。</p>
@@ -126,19 +154,47 @@ export default function MyCalendarPage() {
         </div>
       )}
 
-      {days.map(({ day, personal: items, team }) => (
+      {days.map(({ day, personal: items, team, tasks: dayTasks }) => (
         <article className="work-row personal-day" key={day}>
           <div>
             <strong>{day}</strong>
             <p className="muted">
-              {items.length === 0
-                ? `${team.length} 项团队活动`
-                : team.length === 0
-                  ? `${items.length} 项个人安排`
-                  : `${items.length} 项个人 · ${team.length} 项团队`}
+              {[
+                items.length ? `${items.length} 项个人` : "",
+                team.length ? `${team.length} 项团队` : "",
+                dayTasks.length ? `${dayTasks.length} 项任务` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <ul className="personal-list">
+            {dayTasks.map((task) => (
+              <li key={`task-${task.id}`}>
+                <span
+                  className="personal-swatch"
+                  style={{ backgroundColor: task.overdue ? "#dc2626" : "#eab308", color: "#111827" }}
+                  aria-hidden="true"
+                >
+                  任
+                </span>
+                <span>
+                  <strong>{task.title}</strong>
+                  <small>
+                    截止 {formatTime(task.due_at, zone)} · {task.team_name}
+                    {task.overdue ? " · 已逾期" : ""}
+                  </small>
+                </span>
+                <span className="panel-actions">
+                  <Link
+                    className="btn btn-ghost btn-sm"
+                    to={`/app/teams/${task.team_id}/tasks?task=${task.id}`}
+                  >
+                    查看任务
+                  </Link>
+                </span>
+              </li>
+            ))}
             {team.map((item) => (
               <li key={`team-${item.id}`}>
                 <span

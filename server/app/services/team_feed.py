@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Event, EventParticipant, Team, TeamMember, User
-from app.services.work import timestamp, utc
+from app.services.work import normalized_time, timestamp, utc
 
 
 def _user_zone(user: User) -> ZoneInfo:
@@ -71,6 +71,8 @@ def my_team_events(
             "my_response": person.response,
             "needs_confirmation": bool(person.needs_confirmation),
             "local_date": utc(event.start_at).astimezone(zone).date().isoformat(),
+            "start_key": normalized_time(timestamp(event.start_at)),
+            "end_key": normalized_time(timestamp(event.end_at)),
         }
         (invites if person.response == "pending" else attending).append(item)
     return {"attending": attending, "invites": invites}

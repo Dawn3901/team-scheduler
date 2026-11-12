@@ -46,6 +46,7 @@ describe("我的日程", () => {
       if (url.startsWith("/api/v1/me/team-events")) {
         return jsonResponse({ attending: [], invites: [] });
       }
+      if (url === "/api/v1/me/tasks") return jsonResponse({ overdue: [], upcoming: [] });
       return jsonResponse({ items: [], total: 0 });
     });
 
@@ -63,6 +64,7 @@ describe("我的日程", () => {
       if (url.startsWith("/api/v1/me/team-events")) {
         return jsonResponse({ attending: [], invites: [] });
       }
+      if (url === "/api/v1/me/tasks") return jsonResponse({ overdue: [], upcoming: [] });
       if (url === "/api/v1/me/events" && init.method === "POST") {
         return jsonResponse({ ...personal, id: 9 }, 201);
       }
@@ -87,11 +89,51 @@ describe("我的日程", () => {
   });
 });
 
+describe("指派给我的任务（CR-012）", () => {
+  it("按截止日展示任务并可跳到任务详情", async () => {
+    mockFetch((url) => {
+      if (url === "/api/v1/auth/me") return jsonResponse(USER);
+      if (url.startsWith("/api/v1/me/calendar")) return jsonResponse({ items: [], total: 0 });
+      if (url.startsWith("/api/v1/me/team-events")) {
+        return jsonResponse({ attending: [], invites: [] });
+      }
+      if (url === "/api/v1/me/tasks") {
+        return jsonResponse({
+          overdue: [
+            {
+              id: 41,
+              team_id: 3,
+              team_name: "软工大作业",
+              title: "补交实验报告",
+              status: "todo",
+              priority: "high",
+              due_at: "2026-11-01T02:00:00Z",
+              overdue: true,
+            },
+          ],
+          upcoming: [],
+        });
+      }
+      return jsonResponse({ items: [], total: 0 });
+    });
+
+    renderApp(["/app/me/calendar"]);
+
+    expect(await screen.findByText("补交实验报告")).toBeInTheDocument();
+    expect(screen.getByText(/已逾期/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "查看任务" })).toHaveAttribute(
+      "href",
+      "/app/teams/3/tasks?task=41",
+    );
+  });
+});
+
 describe("团队活动并入我的日程（CR-011）", () => {
   it("展示待回应邀请与已接受活动，并链接到团队活动详情", async () => {
     mockFetch((url) => {
       if (url === "/api/v1/auth/me") return jsonResponse(USER);
       if (url.startsWith("/api/v1/me/calendar")) return jsonResponse({ items: [], total: 0 });
+      if (url === "/api/v1/me/tasks") return jsonResponse({ overdue: [], upcoming: [] });
       if (url.startsWith("/api/v1/me/team-events")) {
         return jsonResponse({
           attending: [

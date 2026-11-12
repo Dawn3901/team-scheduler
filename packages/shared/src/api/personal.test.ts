@@ -81,6 +81,16 @@ describe("personal calendar api", () => {
   });
 });
 
+describe("my tasks feed", () => {
+  it("请求 /me/tasks", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ overdue: [], upcoming: [] }));
+
+    const { listMyTasks } = await import("./personal");
+    expect(await listMyTasks()).toEqual({ overdue: [], upcoming: [] });
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/v1/me/tasks");
+  });
+});
+
 describe("my team events feed", () => {
   it("按范围请求 /me/team-events", async () => {
     fetchMock.mockResolvedValueOnce(
