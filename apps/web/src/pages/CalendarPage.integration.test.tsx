@@ -152,6 +152,81 @@ describe("忙碌块时间格式差异", () => {
   });
 });
 
+describe("「仅我」筛选展示个人日程", () => {
+  it("个人事件显示为可点事件（灰色私人块），不再只是忙闲斜纹", async () => {
+    const personal = {
+      id: 21,
+      title: "宿舍",
+      description: null,
+      start_at: "2026-11-13T05:00:00Z",
+      end_at: "2026-11-13T06:00:00Z",
+      all_day: false,
+      location: "宿舍",
+      color: null,
+      share_busy: true,
+      updated_at: "2026-11-12T00:00:00Z",
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/v1/auth/me") return jsonResponse(USER);
+      if (url === "/api/v1/teams/1") return jsonResponse(TEAM);
+      if (url.startsWith("/api/v1/me/calendar")) {
+        return jsonResponse({ items: [personal], total: 1 });
+      }
+      if (url.startsWith("/api/v1/teams/1/events")) {
+        return jsonResponse({ items: [], total: 0 });
+      }
+      if (url.startsWith("/api/v1/teams/1/availability")) {
+        return jsonResponse({
+          from: "2026-11-09T00:00:00Z",
+          to: "2026-11-16T00:00:00Z",
+          members: [
+            {
+              user_id: USER.id,
+              display_name: USER.display_name,
+              blocks: [
+                {
+                  start_at: personal.start_at,
+                  end_at: personal.end_at,
+                  all_day: false,
+                  busy: true,
+                  event_id: null,
+                  title: null,
+                  visibility: "private",
+                },
+              ],
+            },
+          ],
+        });
+      }
+      return jsonResponse({ items: [], total: 0 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    window.sessionStorage.setItem(
+      "teamsync.calendar.ui.1",
+      JSON.stringify({ view: "week", date: "2026-11-12", member: "1", busy: true }),
+    );
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/app/teams/1/calendar"]}>
+          <ToastProvider>
+            <Routes>
+              <Route path="/app/teams/:teamId/calendar" element={<CalendarPage />} />
+            </Routes>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("宿舍")).toBeInTheDocument();
+    expect(document.querySelectorAll(".timeline-busy-block")).toHaveLength(0);
+    window.sessionStorage.clear();
+  });
+});
+
 describe("「仅我」筛选的兜底", () => {
   it("自己的忙碌块与可点活动时间段不同，也不画斜纹", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
