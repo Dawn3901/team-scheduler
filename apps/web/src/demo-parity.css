@@ -2002,3 +2002,10 @@ body {
 .personal-row { border-radius: 8px; padding: 6px 8px; }
 .personal-row-urgent strong { color: #b91c1c; }
 .personal-row-soon strong { color: #92400e; }
+
+/* 个人日历（CR-013）：月/周/任务清单 */
+.personal-calendar-page .calendar-filterbar { flex-wrap: wrap; gap: 8px; align-items: center; }
+.personal-calendar-legend { display: flex; gap: 12px; margin: 0 0 0 auto; font-size: 12px; color: #475569; }
+.personal-calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.personal-calendar-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--legend); }
+.personal-task-list { display: grid; gap: 14px; margin-top: 8px; }

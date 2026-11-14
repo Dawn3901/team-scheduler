@@ -15,7 +15,7 @@ async function registerWithTeam(page: Page): Promise<{ teamId: string }> {
   return { teamId: new URL(page.url()).pathname.match(/teams\/(\d+)/)?.[1] ?? "" };
 }
 
-test("我的日程任务行按紧急度着色：逾期红、3 天内黄、正常白", async ({ page }) => {
+test("我的日程任务清单按紧急度着色：逾期红、其余绿", async ({ page }) => {
   const { teamId } = await registerWithTeam(page);
 
   const created = await page.evaluate(async (team) => {
@@ -47,14 +47,14 @@ test("我的日程任务行按紧急度着色：逾期红、3 天内黄、正常
 
   await page.goto("/app/me/calendar");
   await expect(page.getByRole("heading", { name: "我的日程" })).toBeVisible();
+  // CR-013：任务在“任务清单”视图展示。
+  await page.getByRole("button", { name: "任务清单" }).click();
 
   const row = (title: string) => page.locator("li.personal-row", { hasText: title });
   await expect(row("逾期任务")).toHaveClass(/personal-row-urgent/);
   await expect(row("逾期任务")).toHaveAttribute("style", /rgb\(220, 38, 38\)/);
-  await expect(row("两天后任务")).toHaveClass(/personal-row-soon/);
-  await expect(row("两天后任务")).toHaveAttribute("style", /rgb\(234, 179, 8\)/);
+  await expect(row("两天后任务")).toHaveClass(/personal-row-normal/);
+  await expect(row("两天后任务")).toHaveAttribute("style", /rgb\(22, 163, 74\)/);
   await expect(row("两周后任务")).toHaveClass(/personal-row-normal/);
-  // 正常任务：浅底 + 灰边框，不出现红/黄。
-  await expect(row("两周后任务")).toHaveAttribute("style", /rgb\(203, 213, 225\)/);
-  await expect(row("两周后任务")).not.toHaveAttribute("style", /rgb\(220, 38, 38\)|rgb\(234, 179, 8\)/);
+  await expect(row("两周后任务")).not.toHaveAttribute("style", /rgb\(220, 38, 38\)/);
 });
