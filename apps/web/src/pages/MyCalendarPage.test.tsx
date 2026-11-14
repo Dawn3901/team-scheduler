@@ -121,6 +121,10 @@ describe("指派给我的任务（CR-012）", () => {
 
     expect(await screen.findByText("补交实验报告")).toBeInTheDocument();
     expect(screen.getByText(/已逾期/)).toBeInTheDocument();
+    // 任务行按紧急度着色，与日历任务颜色同源。
+    const row = screen.getByText("补交实验报告").closest("li");
+    expect(row).toHaveClass("personal-row-urgent");
+    expect(row?.getAttribute("style")).toContain("dc2626");
     expect(screen.getByRole("link", { name: "查看任务" })).toHaveAttribute(
       "href",
       "/app/teams/3/tasks?task=41",
@@ -176,7 +180,8 @@ describe("团队活动并入我的日程（CR-011）", () => {
     renderApp(["/app/me/calendar"]);
 
     expect(await screen.findByText("团队周会")).toBeInTheDocument();
-    expect(screen.getByText(/待我回应/)).toBeInTheDocument();
+    // 页面说明里也写了“待我回应”，这里只断言列表项里的标记。
+    expect(screen.getAllByText(/待我回应/).length).toBeGreaterThan(1);
     const links = screen.getAllByRole("link", { name: "查看活动" });
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/app/teams/2/events/31",

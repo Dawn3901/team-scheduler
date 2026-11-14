@@ -1,4 +1,4 @@
-import type { CalendarEvent, Task } from "@teamsync/shared";
+import type { CalendarEvent, MyTask, Task } from "@teamsync/shared";
 
 /**
  * 日历颜色语义（CAL-6 调整，CR-012 修订）：
@@ -33,7 +33,7 @@ export function eventColor(event: Pick<CalendarEvent, "visibility" | "my_respons
 }
 
 export function taskColor(
-  task: Pick<Task, "status" | "overdue" | "due_at">,
+  task: Pick<Task, "status" | "overdue" | "due_at"> | Pick<MyTask, "status" | "overdue" | "due_at">,
   now: number = Date.now(),
 ): string {
   if (task.status === "done") {
@@ -54,6 +54,22 @@ export function taskColor(
     return CALENDAR_COLORS.taskSoon;
   }
   return CALENDAR_COLORS.taskNormal;
+}
+
+/** 任务紧急程度（CR-012）：逾期/24h 内=urgent、3 天内=soon、其余/完成=normal。 */
+export function taskUrgency(
+  task: Pick<Task, "status" | "overdue" | "due_at"> | Pick<MyTask, "status" | "overdue" | "due_at">,
+  now: number = Date.now(),
+): "urgent" | "soon" | "normal" {
+  const color = taskColor(task, now);
+  if (color === CALENDAR_COLORS.taskUrgent) return "urgent";
+  if (color === CALENDAR_COLORS.taskSoon) return "soon";
+  return "normal";
+}
+
+/** 任务行的浅色底色（与日历同源，保证列表和日历颜色语义一致）。 */
+export function taskSurface(color: string): string {
+  return `color-mix(in srgb, ${color} 12%, white)`;
 }
 
 export function textColorFor(background: string): string {

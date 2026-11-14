@@ -1997,3 +1997,8 @@ body {
 .about-version dt { color: #64748b; font-size: 12px; }
 .about-version dd { margin: 4px 0 0; font-weight: 600; font-size: 13px; word-break: break-all; }
 .tutorial-version { margin: 0; font-size: 12px; }
+
+/* 我的日程：任务行按紧急度着色（与日历任务颜色同源） */
+.personal-row { border-radius: 8px; padding: 6px 8px; }
+.personal-row-urgent strong { color: #b91c1c; }
+.personal-row-soon strong { color: #92400e; }

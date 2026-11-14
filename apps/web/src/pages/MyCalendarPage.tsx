@@ -19,7 +19,7 @@ import { Link } from "react-router-dom";
 
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
-import { textColorFor } from "../lib/calendarColors";
+import { CALENDAR_COLORS, taskColor, taskSurface, taskUrgency, textColorFor } from "../lib/calendarColors";
 import { isAlsoInTeam } from "../lib/calendarDedupe";
 import { friendlyMessage } from "../lib/errors";
 
@@ -110,7 +110,8 @@ export default function MyCalendarPage() {
           <p className="eyebrow">个人空间</p>
           <h1>我的日程</h1>
           <p className="muted">
-            这里汇总「我参加的团队活动」「我的个人安排」与「指派给我的任务」；团队活动和个人事件来自你的账号，任务以截止日出现、完成后自动消失。
+            这里汇总「我参加的团队活动」「我的个人安排」与「指派给我的任务」。
+            颜色统一：红=逾期或 24 小时内、黄=3 天内、白=正常；蓝=我要参加的团队活动、绿=待我回应、紫=个人安排。
           </p>
         </div>
         <div className="panel-actions">
@@ -169,20 +170,36 @@ export default function MyCalendarPage() {
             </p>
           </div>
           <ul className="personal-list">
-            {dayTasks.map((task) => (
-              <li key={`task-${task.id}`}>
+            {dayTasks.map((task) => {
+              const color = taskColor(task);
+              const urgency = taskUrgency(task);
+              return (
+              <li
+                key={`task-${task.id}`}
+                className={`personal-row personal-row-${urgency}`}
+                style={{
+                  backgroundColor: taskSurface(color),
+                  borderLeft: `3px solid ${color === CALENDAR_COLORS.taskNormal ? "#cbd5e1" : color}`,
+                }}
+              >
                 <span
                   className="personal-swatch"
-                  style={{ backgroundColor: task.overdue ? "#dc2626" : "#eab308", color: "#111827" }}
+                  style={{ backgroundColor: color === CALENDAR_COLORS.taskNormal ? "#f1f5f9" : color, color: "#111827" }}
                   aria-hidden="true"
                 >
-                  任
+                  {urgency === "urgent" ? "急" : urgency === "soon" ? "近" : "任"}
                 </span>
                 <span>
                   <strong>{task.title}</strong>
                   <small>
                     截止 {formatTime(task.due_at, zone)} · {task.team_name}
-                    {task.overdue ? " · 已逾期" : ""}
+                    {task.overdue
+                      ? " · 已逾期"
+                      : urgency === "urgent"
+                        ? " · 24 小时内到期"
+                        : urgency === "soon"
+                          ? " · 3 天内到期"
+                          : ""}
                   </small>
                 </span>
                 <span className="panel-actions">
@@ -194,7 +211,8 @@ export default function MyCalendarPage() {
                   </Link>
                 </span>
               </li>
-            ))}
+              );
+            })}
             {team.map((item) => (
               <li key={`team-${item.id}`}>
                 <span
