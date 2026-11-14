@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -87,6 +87,37 @@ describe("个人日历", () => {
     const row = screen.getByText("补交报告").closest("li");
     expect(row).toHaveClass("personal-row-urgent");
     expect(screen.getByText(/已逾期/)).toBeInTheDocument();
+  });
+
+  it("没有安排时仍渲染空日历，而不是一行提示", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/v1/auth/me") return Promise.resolve(jsonResponse(USER));
+        if (url.startsWith("/api/v1/me/agenda")) {
+          return Promise.resolve(jsonResponse({ from: "", to: "", events: [], tasks: [] }));
+        }
+        return Promise.resolve(jsonResponse({ items: [], total: 0 }));
+      }),
+    );
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "我的日程" })).toBeInTheDocument();
+    expect(await screen.findByLabelText(/可缩放时间轴/)).toBeInTheDocument();
+    expect(screen.queryByText("这段时间没有安排")).not.toBeInTheDocument();
+  });
+
+  it("月视图不重复渲染“今天/上一页/下一页”工具栏", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "月" }));
+    await waitFor(() => {
+      const toolbars = document.querySelectorAll(".calendar-filterbar");
+      expect(toolbars).toHaveLength(1);
+    });
+    // 顶部只有一个“今天”；rbc 自带工具栏已关闭，不应再有第二组“今天/上一页/下一页”。
+    expect(screen.getAllByRole("button", { name: "今天" })).toHaveLength(1);
+    expect(document.querySelectorAll(".rbc-toolbar")).toHaveLength(0);
   });
 
   it("颜色说明包含红/蓝/绿三种语义", async () => {

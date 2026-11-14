@@ -201,14 +201,6 @@ export default function PersonalCalendarPage() {
 
       {view === "tasks" ? (
         <PersonalTaskList groups={taskGroups} zone={zone} />
-      ) : agenda.data && items.length === 0 ? (
-        <div className="empty-state">
-          <h2>这段时间没有安排</h2>
-          <p className="muted">新建个人事件，或去团队日历参加活动。</p>
-          <button type="button" className="btn btn-primary" onClick={() => setEditing("new")}>
-            新建第一条
-          </button>
-        </div>
       ) : view === "month" ? (
         <div className="calendar-scroll view-month">
           <Calendar
@@ -221,6 +213,7 @@ export default function PersonalCalendarPage() {
             startAccessor="start"
             endAccessor="end"
             selectable
+            toolbar={false}
             onNavigate={d => remember("month", format(d, "yyyy-MM-dd"))}
             onView={() => undefined}
             onSelectSlot={slot => {

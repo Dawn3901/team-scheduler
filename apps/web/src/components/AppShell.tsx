@@ -21,6 +21,8 @@ const pageLabels: Record<string, string> = {
 
 function pageLabel(pathname: string): string {
   if (/\/events\/\d+/.test(pathname)) return "活动详情";
+  // 个人空间路由 /app/me/calendar 的末段是 calendar，不能命中“团队日历”。
+  if (/^\/app\/me\//.test(pathname)) return pageLabels.me;
   const segment = pathname.split("/").filter(Boolean).at(-1) ?? "";
   return pageLabels[segment] ?? "我的团队";
 }
@@ -177,7 +179,7 @@ export function AppShell() {
             <Icon name={sidebarOpen ? "close" : "menu"} />
           </button>
           <div className="breadcrumb">
-            <span>{team?.name ?? "我的团队"}</span>
+            <span>{/^\/app\/me\//.test(location.pathname) ? "个人空间" : (team?.name ?? "我的团队")}</span>
             <Icon name="chevron-right" />
             <strong>{label}</strong>
           </div>
