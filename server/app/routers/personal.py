@@ -11,6 +11,7 @@ from app.deps import CurrentUser
 from app.models import now_utc
 from app.schemas_personal import PersonalEventCreate, PersonalEventPatch
 from app.services import personal
+from app.services.agenda import agenda
 from app.services.my_tasks import my_tasks
 from app.services.team_feed import my_team_events
 from app.services.work import validate_range
@@ -56,3 +57,10 @@ def team_events(user: CurrentUser, db: Db, start: From, end: To):
 def my_open_tasks(user: CurrentUser, db: Db):
     """CR-012：跨团队指派给我的逾期与 30 天内任务（只读）。"""
     return my_tasks(db, user, now_utc() + timedelta(days=30))
+
+
+@router.get("/me/agenda")
+def my_agenda(user: CurrentUser, db: Db, start: From, end: To):
+    """CR-013：个人日历聚合议程（个人事件 + 我参加的团队活动 + 我的任务）。"""
+    start, end = validate_range(start, end, personal.MAX_RANGE_DAYS)
+    return agenda(db, user, start, end)

@@ -48,3 +48,17 @@ export interface MyTasks {
 }
 
 export const listMyTasks = () => request<MyTasks>("/me/tasks");
+
+/** CR-013：个人日历聚合议程（个人事件 + 我参加的团队活动 + 我的任务）。 */
+export interface AgendaEvent {
+  id: string; source_id: number; kind: "personal" | "team_event"; title: string;
+  start_at: string; end_at: string; all_day: boolean; location: string | null;
+  team_id: number | null; team_name: string | null;
+  my_response: "pending" | "accepted" | "declined" | "tentative" | null;
+  needs_confirmation: boolean; status: "confirmed" | "cancelled";
+}
+export interface Agenda {
+  from: string; to: string; events: AgendaEvent[]; tasks: MyTask[];
+}
+export const listAgenda = (from: string, to: string) =>
+  request<Agenda>(`/me/agenda?${new URLSearchParams({ from, to })}`);

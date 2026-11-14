@@ -6,6 +6,8 @@ import {
   eventColor,
   isPrivateForViewer,
   taskColor,
+  taskSurface,
+  taskUrgency,
   textColorFor,
 } from "./calendarColors";
 
@@ -62,5 +64,15 @@ describe("textColorFor", () => {
     expect(textColorFor(CALENDAR_COLORS.taskNormal)).toBe("#111827");
     expect(textColorFor(CALENDAR_COLORS.taskSoon)).toBe("#111827");
     expect(textColorFor(CALENDAR_COLORS.attending)).toBe("#ffffff");
+  });
+});
+
+describe("taskUrgency / taskSurface", () => {
+  it("列表行与日历使用同一套紧急度", () => {
+    expect(taskUrgency(task({ overdue: true }), now)).toBe("urgent");
+    expect(taskUrgency(task({ due_at: "2026-11-13T12:00:00Z" }), now)).toBe("soon");
+    expect(taskUrgency(task({ due_at: "2026-11-20T12:00:00Z" }), now)).toBe("normal");
+    expect(taskUrgency(task({ status: "done", overdue: true }), now)).toBe("normal");
+    expect(taskSurface(CALENDAR_COLORS.taskUrgent)).toContain("#dc2626");
   });
 });

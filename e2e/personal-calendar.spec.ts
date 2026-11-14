@@ -39,8 +39,8 @@ test("个人日程可增删改，并在团队忙闲中只显示忙碌", async ({
   await dialog.getByLabel("结束时间", { exact: true }).fill(endLocal);
   await dialog.getByRole("button", { name: "保存" }).click();
 
-  await expect(owner.getByText("个人面试")).toBeVisible();
-  await expect(owner.getByText(/参与团队忙闲/).first()).toBeVisible();
+  // CR-013：个人日历默认周视图，个人事件显示在时间轴上。
+  await expect(owner.locator(".timeline-event", { hasText: "个人面试" }).first()).toBeVisible();
 
   // CR-011：团队里自己参与的活动以只读方式并入“我的日程”。
   await owner.goto(`/app/teams/${teamId}/calendar`);
@@ -50,7 +50,7 @@ test("个人日程可增删改，并在团队忙闲中只显示忙碌", async ({
   await eventDialog.getByLabel("活动标题").fill("团队周会");
   await eventDialog.getByRole("button", { name: "保存活动" }).click();
   await owner.getByRole("link", { name: "我的日程" }).click();
-  await expect(owner.getByText("团队周会")).toBeVisible();
+  await expect(owner.locator(".timeline-event", { hasText: "团队周会" }).first()).toBeVisible();
 
   const mate = await browser.newPage();
   const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 6)}`;

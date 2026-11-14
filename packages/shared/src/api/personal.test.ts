@@ -104,3 +104,13 @@ describe("my team events feed", () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain("/me/team-events?from=");
   });
 });
+
+describe("agenda api", () => {
+  it("请求 /me/agenda 并带 from/to", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ from: "a", to: "b", events: [], tasks: [] }));
+    const { listAgenda } = await import("./personal");
+    const result = await listAgenda("2026-11-14T00:00:00Z", "2026-11-21T00:00:00Z");
+    expect(result.events).toEqual([]);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/me/agenda?from=");
+  });
+});
