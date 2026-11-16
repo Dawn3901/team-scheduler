@@ -6,7 +6,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import ValidationError, field_validator
+from pydantic import SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -39,6 +39,10 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    openai_api_key: SecretStr | None = None
+    openai_base_url: str = "https://api.deepseek.com"
+    openai_model: str = "deepseek-chat"
 
     app_name: str = "TeamSync"
     api_v1_prefix: str = "/api/v1"

@@ -23,7 +23,7 @@ from app.realtime.channel import (
     refresh_team,
 )
 from app.realtime.channel import router as ws_router
-from app.routers import auth, health, personal, teams, work
+from app.routers import assistant, auth, health, personal, teams, work
 
 API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 WEB_CSP = (
@@ -90,6 +90,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(assistant.router, prefix=settings.api_v1_prefix)
     app.include_router(health.router)
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
     app.include_router(teams.router, prefix=settings.api_v1_prefix)
@@ -107,6 +108,9 @@ def create_app() -> FastAPI:
                 user_id = getattr(request.state, "user_id", None)
                 if user_id:
                     publish_personal(int(user_id))
+                return response
+            # AI 对话只生成草稿；真正创建活动仍由 /events 触发广播。
+            if len(parts) == 4 and parts[0] == "teams" and parts[2:] == ["assistant", "chat"]:
                 return response
             with SessionLocal() as db:
                 team_ids = []
