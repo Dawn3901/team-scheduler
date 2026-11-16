@@ -106,6 +106,13 @@ def can_edit(resource, ctx: TeamContext, user_id: int) -> None:
         raise ApiError(403, "FORBIDDEN", "没有编辑权限")
 
 
+# 同一活动/任务反复产生的同类通知：合并为一条，已读后再次变更才重新出现。
+# 提醒（event.reminder/task.due_soon/task.overdue）按时间桶去重，不参与合并。
+COALESCED_NOTIFICATIONS = frozenset(
+    {"event.invited", "event.updated", "event.cancelled", "task.assigned"}
+)
+
+
 def notify(
     db: Session,
     user_id: int,
@@ -115,21 +122,42 @@ def notify(
     payload: dict,
     key: str | None = None,
 ) -> None:
+    """写入通知；带 key 时不重复。
+
+    已存在：可合并类型刷新标题与时间（同一活动反复变更只留一条未读，
+    已读后再次变更会重新出现），其余类型（提醒、逾期）保持去重不更新。
+    """
     if user_id not in active_ids(db, team_id):
         return
-    db.execute(
-        insert(Notification)
-        .values(
-            user_id=user_id,
-            team_id=team_id,
-            type=kind,
-            title=title,
-            payload_json=json.dumps(payload),
-            dedupe_key=key,
-            created_at=now_utc(),
+    values = {
+        "user_id": user_id,
+        "team_id": team_id,
+        "type": kind,
+        "title": title,
+        "payload_json": json.dumps(payload),
+        "dedupe_key": key,
+        "created_at": now_utc(),
+    }
+    statement = insert(Notification).values(**values)
+    if key and kind in COALESCED_NOTIFICATIONS:
+        db.execute(
+            statement.on_conflict_do_update(
+                index_elements=["dedupe_key"],
+                set_={
+                    "title": title,
+                    "payload_json": values["payload_json"],
+                    "created_at": values["created_at"],
+                    "read_at": None,
+                },
+            )
         )
-        .on_conflict_do_nothing(index_elements=["dedupe_key"])
-    )
+        return
+    db.execute(statement.on_conflict_do_nothing(index_elements=["dedupe_key"]))
+
+
+def coalesce_key(kind: str, entity_id: int, user_id: int) -> str:
+    """同一活动/任务 + 同一用户 + 同一类型的合并键。"""
+    return f"{kind}:{entity_id}:{user_id}"
 
 
 def notify_event(db: Session, event: Event, kind: str, actor: int | None = None) -> None:
@@ -142,6 +170,11 @@ def notify_event(db: Session, event: Event, kind: str, actor: int | None = None)
                 kind,
                 event.title,
                 {"team_id": event.team_id, "event_id": event.id},
+                key=(
+                    coalesce_key(kind, event.id, p.user_id)
+                    if kind in COALESCED_NOTIFICATIONS
+                    else None
+                ),
             )
 
 
@@ -298,7 +331,7 @@ def create_event(
                 "event.reminder",
                 event.title,
                 {"team_id": event.team_id, "event_id": event.id},
-                f"event.reminder:{uid}:{event.id}:15m:{timestamp(event.start_at)}",
+                f"event.reminder:{uid}:{event.id}:15m",
             )
     if commit:
         db.commit()
@@ -375,6 +408,7 @@ def patch_event(
                     "event.updated",
                     f"「{event.title}」时间/地点已变更，请重新确认",
                     {"team_id": event.team_id, "event_id": event.id},
+                    key=coalesce_key("event.updated", event.id, p.user_id),
                 )
     if commit:
         db.commit()
@@ -411,6 +445,7 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
                     "event.invited",
                     event.title,
                     {"team_id": event.team_id, "event_id": event.id},
+                    key=coalesce_key("event.invited", event.id, uid),
                 )
             continue
         db.execute(
@@ -431,6 +466,7 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
             "event.invited",
             event.title,
             {"team_id": event.team_id, "event_id": event.id},
+            key=coalesce_key("event.invited", event.id, uid),
         )
     db.commit()
     items = [participant_out(db, p) for p in participants(db, event.id)]
@@ -493,6 +529,7 @@ def create_task(db: Session, ctx: TeamContext, user: User, payload: TaskCreate) 
         "task.assigned",
         task.title,
         {"team_id": task.team_id, "task_id": task.id},
+        key=coalesce_key("task.assigned", task.id, task.assignee_id),
     )
     db.commit()
     return task_out(db, task)
@@ -524,6 +561,7 @@ def patch_task(db: Session, task: Task, ctx: TeamContext, user: User, payload: T
                 "task.assigned",
                 task.title,
                 {"team_id": task.team_id, "task_id": task.id},
+                key=coalesce_key("task.assigned", task.id, changes["assignee_id"]),
             )
     if "title" in changes:
         changes["title"] = text_value(changes["title"], 100, True)

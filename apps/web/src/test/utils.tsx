@@ -41,7 +41,8 @@ type FetchHandler = (url: string, init: RequestInit) => Response | Promise<Respo
 export function mockFetch(handler: FetchHandler) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
     Promise.resolve(
-      String(input).startsWith("/api/v1/notifications?")
+      // 通知列表默认空数据；用例需要自定义时可先接管 /notifications。
+      String(input).startsWith("/api/v1/notifications?") && !overrides.has("notifications")
         ? jsonResponse({items: [], total: 0, unread_count: 0})
         : /\/(members|tasks|events)\?/.test(String(input))
           ? jsonResponse({items: [], total: 0})
@@ -50,6 +51,13 @@ export function mockFetch(handler: FetchHandler) {
   );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
+}
+
+/** 用例自定义的接口前缀：命中后交给 handler（例如通知分组用例要返回真实列表）。 */
+const overrides = new Set<string>();
+
+export function overrideDefaults(...prefixes: string[]) {
+  prefixes.forEach(prefix => overrides.add(prefix));
 }
 
 const clients = new Set<QueryClient>();
@@ -61,6 +69,7 @@ export async function cleanupApp() {
   await Promise.all([...clients].map(client => client.cancelQueries()));
   for (const client of clients) client.clear();
   clients.clear();
+  overrides.clear();
 }
 
 export function renderApp(initialEntries: string[] = ["/app"]) {

@@ -1430,6 +1430,132 @@ body {
   white-space: nowrap;
 }
 
+/* 同一活动/任务的同类通知合并成一组：最近一条 + 折叠历史。 */
+.notice-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  cursor: default;
+}
+
+.notice-main {
+  grid-column: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notice-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.notice-title strong {
+  overflow-wrap: anywhere;
+}
+
+.notice-type {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.notice-count {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.notice-meta {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.notice-history {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--line-strong);
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.notice-history li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.notice-history li > span:nth-child(2) {
+  overflow-wrap: anywhere;
+  color: var(--ink-2);
+}
+
+.notice-history li.unread > span:nth-child(2) {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  .notice-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notice-meta {
+    grid-column: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
 @media (max-width: 600px) {
   .member-card {
     flex-wrap: wrap;
