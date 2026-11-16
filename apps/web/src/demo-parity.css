@@ -61,10 +61,21 @@ body {
   width: 248px;
   flex: 0 0 248px;
   height: 100vh;
+  height: 100dvh;
+  /* 限高并吸顶：内容超过视口时在侧栏内部滚动（移动端抽屉是全屏固定层）。 */
+  max-height: 100vh;
+  max-height: 100dvh;
   position: sticky;
   top: 0;
+  align-self: flex-start;
   display: flex;
   flex-direction: column;
+  /* 条目多时只在深色侧栏内部滚动，不能溢出到 .app-shell 的白底。 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 28%) transparent;
   padding: 22px 14px 16px;
   color: #cbd5e1;
   background:
@@ -268,11 +279,17 @@ body {
 }
 
 .sidebar-user {
+  position: sticky;
+  bottom: 0;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 14px 4px 0;
+  padding: 14px 4px 4px;
+  margin-top: 8px;
   border-top: 1px solid rgb(148 163 184 / 12%);
+  background: linear-gradient(180deg, rgb(16 26 47 / 82%), var(--sidebar-2) 42%);
+  backdrop-filter: blur(6px);
+  z-index: 1;
 }
 
 .sidebar-user .avatar {
@@ -320,6 +337,8 @@ body {
   flex: 1;
   min-width: 0;
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -389,8 +408,19 @@ body {
 
 .app-content {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 26px 28px 44px;
+}
+
+/* 内容切换只用透明度淡入，不用 transform：transform 会让 fixed 子元素以内容区为包含块。 */
+.app-content > * {
+  animation: app-content-fade 0.24s ease both;
+}
+
+@keyframes app-content-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .icon-btn {
@@ -604,6 +634,11 @@ body {
     top: 0;
     width: 260px;
     flex-basis: 260px;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    align-self: auto;
     transform: translateX(-100%);
     transition: transform 0.22s ease;
     box-shadow: 20px 0 50px -30px rgb(15 23 42 / 60%);
@@ -1395,6 +1430,132 @@ body {
   white-space: nowrap;
 }
 
+/* 同一活动/任务的同类通知合并成一组：最近一条 + 折叠历史。 */
+.notice-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  cursor: default;
+}
+
+.notice-main {
+  grid-column: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notice-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.notice-title strong {
+  overflow-wrap: anywhere;
+}
+
+.notice-type {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.notice-count {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.notice-meta {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.notice-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.notice-history {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--line-strong);
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.notice-history li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.notice-history li > span:nth-child(2) {
+  overflow-wrap: anywhere;
+  color: var(--ink-2);
+}
+
+.notice-history li.unread > span:nth-child(2) {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  .notice-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notice-meta {
+    grid-column: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
 @media (max-width: 600px) {
   .member-card {
     flex-wrap: wrap;
@@ -1439,6 +1600,36 @@ body {
   color: white;
   font-size: 22px;
   font-weight: 700;
+}
+
+/* AUTH-8：上传头像的图片形态与首字母块保持同一尺寸/圆角。 */
+.avatar-image,
+.member-avatar.avatar-image,
+.resource-avatar.avatar-image,
+.profile-avatar.avatar-image {
+  object-fit: cover;
+  background: var(--surface-3);
+}
+
+.profile-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-avatar-hint {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.profile-avatar-error {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 11px;
+  text-align: center;
 }
 
 .profile-card strong {

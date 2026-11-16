@@ -68,6 +68,9 @@ FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
         ("GET", "/api/v1/me/tasks"),
         ("GET", "/api/v1/me/agenda"),
         ("POST", "/api/v1/teams/{team_id}/assistant/chat"),
+        # CR-015 / AUTH-8：上传与删除自己的头像（读取接口带版本号路径，不进入冻结表）。
+        ("POST", "/api/v1/auth/me/avatar"),
+        ("DELETE", "/api/v1/auth/me/avatar"),
     }
 )
 
@@ -104,6 +107,9 @@ FROZEN_ERROR_CODES = frozenset(FROZEN_HTTP_ERROR_CODES.values()) | {
     "TASK_BLOCKED",
     "DEPENDENCY_IN_USE",
     "AI_UNAVAILABLE",
+    # CR-015 / AUTH-8：头像格式不支持（415）与超过 2 MB（413）。
+    "INVALID_AVATAR",
+    "AVATAR_TOO_LARGE",
 }
 
 # 由 validate_ids 以变量形式抛出的两个业务码。
@@ -186,7 +192,7 @@ def test_frozen_operation_set_matches_openapi() -> None:
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
     assert actual == set(FROZEN_OPERATIONS)
-    assert len(actual) == 43
+    assert len(actual) == 45
 
 
 def test_documented_endpoint_table_matches_frozen_contract() -> None:

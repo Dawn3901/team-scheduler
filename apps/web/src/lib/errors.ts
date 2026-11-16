@@ -31,6 +31,10 @@ export function friendlyMessage(error: unknown): string {
       return error.message || "操作冲突，请刷新后重试";
     case "RATE_LIMITED":
       return "操作太频繁，请稍后再试";
+    case "INVALID_AVATAR":
+      return error.message || "头像只支持 JPG、PNG 或 WebP 图片";
+    case "AVATAR_TOO_LARGE":
+      return "头像不能超过 2 MB，请压缩后重试";
     case "INTERNAL_ERROR":
       return "服务器开小差了，请稍后重试";
     default:

@@ -3,6 +3,7 @@ import { changeRole, listMembers, removeMember } from "@teamsync/shared";
 import { useParams } from "react-router-dom";
 import { useTeam } from "../hooks/useSession";
 import { useAction } from "../hooks/useWork";
+import { Avatar } from "../components/Avatar";
 import { RoleBadge } from "../components/RoleBadge";
 import { friendlyMessage } from "../lib/errors";
 
@@ -23,7 +24,7 @@ export default function MembersPage() {
     {members.isPending && <p>成员加载中…</p>}
     <div className="member-grid">
       {members.data?.items.map(m => <article className="member-card" key={m.user_id}>
-        <span className="member-avatar" aria-hidden="true">{Array.from(m.display_name)[0] ?? "?"}</span>
+        <Avatar className="member-avatar" name={m.display_name} url={m.avatar_url} />
         <div className="member-main">
           <div className="member-name"><strong>{m.display_name}</strong><RoleBadge role={m.role} /></div>
           <p className="muted">加入于 {m.joined_at.slice(0,10)}</p>

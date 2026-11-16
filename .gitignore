@@ -12,6 +12,7 @@ htmlcov/
 server/data/*.db
 server/data/*.db-*
 server/data/backups/
+server/data/avatars/
 
 # Node
 node_modules/

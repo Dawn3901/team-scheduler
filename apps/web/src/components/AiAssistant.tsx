@@ -7,6 +7,15 @@ import { friendlyMessage } from "../lib/errors";
 import "./AiAssistant.css";
 
 const POSITION_KEY = "teamsync.ai.position";
+const GAP = 8;
+/** 侧栏占用的横向空间：桌面为固定宽侧栏，窄屏为抽屉（不占横向空间）。 */
+function railWidth() {
+  if (!window.matchMedia?.("(max-width: 980px)").matches) {
+    const rail = document.querySelector<HTMLElement>(".app-sidebar");
+    if (rail) return Math.round(rail.getBoundingClientRect().width);
+  }
+  return 0;
+}
 function initialPosition() {
   try {
     const p = JSON.parse(localStorage.getItem(POSITION_KEY) || "null");
@@ -104,7 +113,12 @@ export default function AiAssistant({ currentTeamId, onHide }: { currentTeamId: 
   const selected = teams.data?.items.find(t => t.id === (currentTeamId || chosen)) ?? teams.data?.items[0];
   const width = open ? Math.min(410, window.innerWidth - 16) : 126;
   const height = open ? Math.min(640, window.innerHeight - 24) : 52;
-  const clamp = (x: number, y: number) => ({ x: Math.max(8, Math.min(x, window.innerWidth - width - 8)), y: Math.max(8, Math.min(y, window.innerHeight - height - 8)) });
+  // 夹紧到侧栏右侧的工作区，避免助手压住导航或滚出视口。
+  const clamp = (x: number, y: number) => {
+    const minX = railWidth() + GAP;
+    const maxX = Math.max(minX, window.innerWidth - width - GAP);
+    return { x: Math.max(minX, Math.min(x, maxX)), y: Math.max(GAP, Math.min(y, window.innerHeight - height - GAP)) };
+  };
   const shown = clamp(position.x, position.y);
   useEffect(() => {
     const resize = () => setPosition(p => ({ ...p }));

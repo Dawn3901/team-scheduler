@@ -19,6 +19,7 @@ from app.schemas import (
     TeamMemberListOut,
     TeamMemberOut,
     TeamOut,
+    avatar_url_for,
 )
 
 INVITE_CODE_LENGTH = 8
@@ -270,7 +271,7 @@ def list_members(db: Session, team_id: int, *, limit: int, offset: int) -> TeamM
     )
     total = db.scalar(select(func.count(TeamMember.id)).where(*active_members)) or 0
     rows = db.execute(
-        select(TeamMember, User.display_name)
+        select(TeamMember, User.display_name, User.avatar_file, User.avatar_updated_at)
         .join(User, User.id == TeamMember.user_id)
         .where(*active_members)
         .order_by(_ROLE_SORT, TeamMember.joined_at, TeamMember.id)
@@ -284,8 +285,9 @@ def list_members(db: Session, team_id: int, *, limit: int, offset: int) -> TeamM
             display_name=display_name,
             role=member.role,
             joined_at=member.joined_at,
+            avatar_url=avatar_url_for(member.user_id, avatar_file, avatar_updated_at),
         )
-        for member, display_name in rows
+        for member, display_name, avatar_file, avatar_updated_at in rows
     ]
     return TeamMemberListOut(items=items, total=total)
 
@@ -309,11 +311,13 @@ def change_role(db: Session, team_id: int, user_id: int, role: str) -> TeamMembe
         raise ApiError(403, "FORBIDDEN", "不能修改所有者角色")
     member.role = role
     db.commit()
+    user = db.get(User, user_id)
     return TeamMemberOut(
         user_id=user_id,
-        display_name=db.get(User, user_id).display_name,
+        display_name=user.display_name,
         role=role,
         joined_at=member.joined_at,
+        avatar_url=avatar_url_for(user_id, user.avatar_file, user.avatar_updated_at),
     )
 
 

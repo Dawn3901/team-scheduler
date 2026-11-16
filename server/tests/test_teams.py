@@ -299,7 +299,8 @@ def test_members_list_sorted_by_role_and_contract_fields(
     assert [item["role"] for item in body["items"]] == ["owner", "admin", "member"]
     assert body["items"][0]["display_name"] == "Owner 林"
     for item in body["items"]:
-        assert set(item) == {"user_id", "display_name", "role", "joined_at"}
+        # CR-015：新增可空的 avatar_url。
+        assert set(item) == {"user_id", "display_name", "role", "joined_at", "avatar_url"}
         joined_at = item["joined_at"]
         assert joined_at.endswith("Z")
         parsed = datetime.fromisoformat(joined_at.replace("Z", "+00:00"))

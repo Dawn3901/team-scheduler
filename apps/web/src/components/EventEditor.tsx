@@ -1,8 +1,9 @@
-import { useNow } from "../hooks/useNow";
 import { ApiError, createEvent, getEvent, inviteParticipants, localInput, shiftDate, toUtc, updateEvent, type CalendarEvent, type EventInput, type EventScope, type Member } from "@teamsync/shared";
 import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
+import { useNow } from "../hooks/useNow";
+import { Avatar } from "./Avatar";
 
 export default function EventEditor({teamId, timezone, members, current, initial, initialEnd, initialParticipants = [], currentUserId, onClose}: {
   teamId: number; timezone: string; members: Member[]; current?: CalendarEvent;
@@ -94,7 +95,7 @@ export default function EventEditor({teamId, timezone, members, current, initial
         <div className="participant-list">
           {invitableMembers.map(m => <label className="participant-option" key={m.user_id}>
             <input name="participants" type="checkbox" value={m.user_id} aria-label={m.display_name} disabled={alreadyInvited(m)} checked={selected.includes(m.user_id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, m.user_id] : prev.filter(id => id !== m.user_id))} />
-            <span className="member-avatar participant-avatar" aria-hidden="true">{Array.from(m.display_name)[0] ?? "?"}</span>
+            <Avatar className="member-avatar participant-avatar" name={m.display_name} url={m.avatar_url} />
             <span>{m.display_name}</span>
           </label>)}
           {invitableMembers.length === 0 && <p className="muted">暂无其他成员可邀请。</p>}

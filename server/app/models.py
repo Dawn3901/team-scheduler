@@ -47,6 +47,11 @@ class User(Base):
     avatar_color: Mapped[str] = mapped_column(
         String, nullable=False, server_default=text("'#4F46E5'")
     )
+    # 上传头像只存服务器上的文件名（server/data/avatars/）；为空时前端回退首字母 + avatar_color。
+    avatar_file: Mapped[str | None] = mapped_column(String, nullable=True)
+    avatar_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     timezone: Mapped[str] = mapped_column(
         String, nullable=False, server_default=text("'Asia/Shanghai'")
     )

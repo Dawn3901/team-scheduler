@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { USER, cleanupApp, jsonResponse, mockFetch, renderApp } from "../test/utils";
+import { USER, cleanupApp, jsonResponse, mockFetch, overrideDefaults, renderApp } from "../test/utils";
 
 beforeEach(() => {
   vi.stubGlobal("WebSocket", undefined);
@@ -48,5 +48,48 @@ describe("通知中心", () => {
     expect(
       fetchMock.mock.calls.some(([url]) => String(url).includes("unread_only=false")),
     ).toBe(true);
+  });
+
+  it("同一活动的同类通知合并为一组，可展开历史", async () => {
+    overrideDefaults("notifications");
+    const notice = (id: number, title: string, createdAt: string, type = "event.updated") => ({
+      id,
+      type,
+      title,
+      body: null,
+      payload: { team_id: 1, event_id: 12 },
+      read_at: null,
+      created_at: createdAt,
+    });
+    mockFetch((url) => {
+      if (url === "/api/v1/auth/me") return jsonResponse(USER);
+      if (url.startsWith("/api/v1/notifications?"))
+        return jsonResponse({
+          items: [
+            notice(3, "「评审」时间/地点已变更，请重新确认", "2026-11-16T10:00:00Z"),
+            notice(2, "「评审-旧」时间/地点已变更，请重新确认", "2026-11-15T10:00:00Z"),
+            notice(1, "评审", "2026-11-14T10:00:00Z", "event.invited"),
+          ],
+          total: 3,
+          unread_count: 3,
+        });
+      return jsonResponse({ items: [], total: 0 });
+    });
+    const user = userEvent.setup();
+
+    renderApp(["/app/notifications"]);
+
+    // 变更 2 条合并为一组，邀请 1 条自成一组。
+    await screen.findByText("活动变更");
+    expect(screen.getByText("活动邀请")).toBeInTheDocument();
+    expect(screen.getAllByTestId("notice-group")).toHaveLength(2);
+    // 组内只展示最近一条，并提示合并数量与原标题。
+    expect(screen.getByText("「评审」时间/地点已变更，请重新确认")).toBeInTheDocument();
+    expect(screen.queryByText("「评审-旧」时间/地点已变更，请重新确认")).not.toBeInTheDocument();
+    expect(screen.getByText("×2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "另 1 条" }));
+    expect(screen.getByRole("list", { name: "同类通知历史" })).toBeInTheDocument();
+    expect(screen.getByText("「评审-旧」时间/地点已变更，请重新确认")).toBeInTheDocument();
   });
 });

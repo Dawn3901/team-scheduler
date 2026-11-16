@@ -548,6 +548,8 @@ def test_suggestions_merge_adjacent_and_overlapping_intervals(client, setup):
 
 
 def test_rescheduled_event_reminder_uses_new_time_bucket(client, setup, db):
+    """2026-11-16 用户反馈：同一活动的 15 分钟提醒改期后重复。
+    现约定去重键不含开始时间，同一活动只提醒一次（见 test_notification_coalesce）。"""
     from datetime import timedelta
 
     from app.scheduler.reminders import scan_reminders
@@ -567,11 +569,12 @@ def test_rescheduled_event_reminder_uses_new_time_bucket(client, setup, db):
     )
     scan_reminders(db, old + timedelta(minutes=50))
     scan_reminders(db, old + timedelta(minutes=50))
-    assert (
-        db.scalar(
-            select(func.count())
-            .select_from(Notification)
-            .where(Notification.user_id == owner.id, Notification.type == "event.reminder")
+    notices = list(
+        db.scalars(
+            select(Notification).where(
+                Notification.user_id == owner.id, Notification.type == "event.reminder"
+            )
         )
-        == 2
     )
+    assert len(notices) == 1
+    assert notices[0].dedupe_key == f"event.reminder:{owner.id}:{created['id']}:15m"

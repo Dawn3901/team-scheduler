@@ -59,6 +59,20 @@ class UpdateMeRequest(BaseModel):
         return _strip_required(value)
 
 
+def avatar_version(updated_at: datetime | None) -> int:
+    """头像版本号（毫秒）：SQLite 回读是 naive UTC，统一按 UTC 解释。"""
+    if updated_at is not None and updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=UTC)
+    return int(updated_at.timestamp() * 1000) if updated_at else 0
+
+
+def avatar_url_for(user_id: int, filename: str | None, updated_at: datetime | None) -> str | None:
+    """AUTH-8：上传头像的访问地址（带版本号，更新后浏览器立即换图）。"""
+    if not filename:
+        return None
+    return f"/api/v1/users/{user_id}/avatar/{avatar_version(updated_at)}"
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -66,6 +80,8 @@ class UserOut(BaseModel):
     username: str
     display_name: str
     avatar_color: str
+    # 未上传头像时为 null，前端回退首字母 + avatar_color。
+    avatar_url: str | None = None
 
 
 class AuthResponse(BaseModel):
@@ -111,6 +127,7 @@ class TeamMemberOut(BaseModel):
     display_name: str
     role: TeamRole
     joined_at: datetime
+    avatar_url: str | None = None
 
     @field_serializer("joined_at")
     def _serialize_joined_at(self, value: datetime) -> str:

@@ -57,6 +57,23 @@ def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+def get_optional_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User | None:
+    """用于公开资源（如 `/users/{id}/avatar/{v}`）：有有效令牌则返回用户，否则 None。"""
+    if credentials is None:
+        return None
+    try:
+        user_id = int(decode_access_token(credentials.credentials)["sub"])
+    except (jwt.InvalidTokenError, KeyError, TypeError, ValueError):
+        return None
+    return db.get(User, user_id)
+
+
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+
+
 @dataclass(frozen=True)
 class TeamContext:
     team: Team

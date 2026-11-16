@@ -3,6 +3,7 @@ import { request } from "./client";
 
 export interface Member {
   user_id: number; display_name: string; role: TeamRole; joined_at: string;
+  avatar_url?: string | null;
 }
 export type Rsvp = "pending" | "accepted" | "declined" | "tentative";
 export type EventScope = "this" | "future" | "all";
