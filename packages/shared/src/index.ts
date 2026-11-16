@@ -7,3 +7,4 @@ export * from "./api/teams";
 export * from "./api/work";
 export * from "./dates";
 export * from "./realtime";
+export * from "./api/assistant";

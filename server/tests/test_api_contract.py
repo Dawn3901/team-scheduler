@@ -67,6 +67,7 @@ FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
         ("GET", "/api/v1/me/team-events"),
         ("GET", "/api/v1/me/tasks"),
         ("GET", "/api/v1/me/agenda"),
+        ("POST", "/api/v1/teams/{team_id}/assistant/chat"),
     }
 )
 
@@ -102,6 +103,7 @@ FROZEN_ERROR_CODES = frozenset(FROZEN_HTTP_ERROR_CODES.values()) | {
     "DEPENDENCY_CYCLE",
     "TASK_BLOCKED",
     "DEPENDENCY_IN_USE",
+    "AI_UNAVAILABLE",
 }
 
 # 由 validate_ids 以变量形式抛出的两个业务码。
@@ -184,7 +186,7 @@ def test_frozen_operation_set_matches_openapi() -> None:
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
     assert actual == set(FROZEN_OPERATIONS)
-    assert len(actual) == 42
+    assert len(actual) == 43
 
 
 def test_documented_endpoint_table_matches_frozen_contract() -> None:

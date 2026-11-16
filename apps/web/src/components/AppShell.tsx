@@ -4,6 +4,7 @@ import { logout } from "@teamsync/shared";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Icon, type IconName } from "./Icon";
+import AiAssistant from "./AiAssistant";
 import LiveStatus from "./LiveStatus";
 import { useMe, useTeam } from "../hooks/useSession";
 
@@ -28,6 +29,8 @@ function pageLabel(pathname: string): string {
 }
 
 export function AppShell() {
+  const [aiVisible, setAiVisible] = useState(() => localStorage.getItem("teamsync.ai.hidden") !== "true");
+  const toggleAi = () => setAiVisible(prev => { localStorage.setItem("teamsync.ai.hidden", String(prev)); return !prev; });
   const me = useMe();
   const location = useLocation();
   const navigate = useNavigate();
@@ -167,6 +170,7 @@ export function AppShell() {
         </div>
       </aside>
 
+      {aiVisible && <AiAssistant currentTeamId={teamId} onHide={toggleAi} />}
       <div className="app-body">
         <header className="app-topbar">
           <button
@@ -184,6 +188,7 @@ export function AppShell() {
             <strong>{label}</strong>
           </div>
           <div className="topbar-actions">
+            <button type="button" className="btn btn-ghost" onClick={toggleAi}>{aiVisible ? "隐藏 AI" : "显示 AI 助手"}</button>
             <LiveStatus />
             <Link to="/app/profile" className="topbar-user" aria-label="账户" onClick={closeSidebar}>
               <span
