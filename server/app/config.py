@@ -57,11 +57,17 @@ class Settings(BaseSettings):
     web_dist: str = str(ROOT_DIR / "apps" / "web" / "dist")
     # make seed 的演示账号密码；不设时种子脚本会明确报错。
     seed_password: str | None = None
+    # 上传头像目录（AUTH-8）：默认 server/data/avatars，随数据库一起备份。
+    avatar_dir: str = str(SERVER_DIR / "data" / "avatars")
 
     @field_validator("database_url")
     @classmethod
     def _resolve_database_url(cls, value: str) -> str:
         return resolve_database_url(value)
+
+    @property
+    def avatar_path(self) -> Path:
+        return Path(self.avatar_dir)
 
     @property
     def cors_origin_list(self) -> list[str]:

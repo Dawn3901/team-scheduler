@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { logout } from "@teamsync/shared";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./Icon";
 import AiAssistant from "./AiAssistant";
 import LiveStatus from "./LiveStatus";
@@ -41,7 +42,7 @@ export function AppShell() {
   const teamId = match ? Number(match[1]) : 0;
   const team = useTeam(teamId).data;
   const label = pageLabel(location.pathname);
-  const initial = me.data ? (Array.from(me.data.display_name)[0] ?? "?") : "?";
+  const avatarUser = me.data ? { name: me.data.display_name, color: me.data.avatar_color, url: me.data.avatar_url } : null;
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -145,13 +146,7 @@ export function AppShell() {
         <div className="sidebar-spacer" />
 
         <div className="sidebar-user">
-          <span
-            className="avatar"
-            style={{ backgroundColor: me.data?.avatar_color ?? "#4f46e5" }}
-            aria-hidden="true"
-          >
-            {initial}
-          </span>
+          <Avatar className="avatar" {...(avatarUser ?? { name: "", color: "#4f46e5" })} />
           <span className="user-meta">
             <strong className="header-name" title={me.data?.username}>
               {me.data?.display_name ?? (me.isPending ? "加载中…" : "未登录")}
@@ -191,13 +186,7 @@ export function AppShell() {
             <button type="button" className="btn btn-ghost" onClick={toggleAi}>{aiVisible ? "隐藏 AI" : "显示 AI 助手"}</button>
             <LiveStatus />
             <Link to="/app/profile" className="topbar-user" aria-label="账户" onClick={closeSidebar}>
-              <span
-                className="avatar"
-                style={{ backgroundColor: me.data?.avatar_color ?? "#4f46e5" }}
-                aria-hidden="true"
-              >
-                {initial}
-              </span>
+              <Avatar className="avatar" {...(avatarUser ?? { name: "", color: "#4f46e5" })} />
             </Link>
           </div>
         </header>

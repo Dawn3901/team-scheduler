@@ -20,6 +20,8 @@ BUSINESS_TABLES = {
     "personal_events",
 }
 
+AVATAR_COLUMNS = {"avatar_file", "avatar_updated_at"}
+
 
 def _run_alembic(db_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
@@ -59,7 +61,7 @@ def test_upgrade_head_downgrade_and_upgrade_again(tmp_path: Path) -> None:
     assert {"idx_team_members_user", "idx_team_one_owner"} <= _indexes(db_path, "team_members")
     with sqlite3.connect(db_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("6b4e82bbf137",)
+    assert version == ("a71c4f0d2e93",)
 
     drift = _run_alembic(db_path, "check")
     assert drift.returncode == 0, drift.stdout + drift.stderr
@@ -114,3 +116,18 @@ def test_extensions_upgrade_preserves_old_participants_and_downgrades(tmp_path):
             ("accepted",)
         ]
         assert connection.execute("SELECT title FROM events").fetchall() == [("旧活动",)]
+
+
+def test_avatar_migration_adds_columns_and_rolls_back(tmp_path: Path) -> None:
+    db_path = tmp_path / "avatar.db"
+    assert _run_alembic(db_path, "upgrade", "head").returncode == 0
+    with sqlite3.connect(db_path) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
+    assert AVATAR_COLUMNS <= columns
+
+    # 降级到上一个版本再升级：头像列可安全增删，不影响既有用户数据。
+    assert _run_alembic(db_path, "downgrade", "-1").returncode == 0
+    with sqlite3.connect(db_path) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
+    assert not (AVATAR_COLUMNS & columns)
+    assert _run_alembic(db_path, "upgrade", "head").returncode == 0

@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "happy-dom",
+    // 侧栏/AI 助手回归用例需要读源码 CSS（`?raw`）；默认 CSS 处理会返回空字符串。
+    css: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
   },

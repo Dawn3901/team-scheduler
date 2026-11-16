@@ -14,6 +14,8 @@ export interface UserSummary {
   username: string;
   display_name: string;
   avatar_color: string;
+  /** AUTH-8：上传头像地址；未上传为 null，前端回退首字母 + avatar_color。 */
+  avatar_url?: string | null;
 }
 
 export type TeamRole = "owner" | "admin" | "member";

@@ -48,7 +48,9 @@ def test_register_returns_201_token_and_safe_user(client: TestClient, db: Sessio
     assert response.status_code == 201
     body = response.json()
     assert body["token_type"] == "bearer"
-    assert set(body["user"]) == {"id", "username", "display_name", "avatar_color"}
+    # CR-015：新增可空的 avatar_url（未上传头像时为 null）。
+    assert set(body["user"]) == {"id", "username", "display_name", "avatar_color", "avatar_url"}
+    assert body["user"]["avatar_url"] is None
     assert body["user"]["username"] == "lin"
     assert "password" not in response.text
     assert "password_hash" not in response.text

@@ -93,7 +93,10 @@ def test_new_change_after_read_creates_one_more_unread(client, actors):
         start = first + timedelta(hours=offset)
         client.patch(
             f"/api/v1/events/{eid}",
-            json={"start_at": start.isoformat(), "end_at": (start + timedelta(hours=1)).isoformat()},
+            json={
+                "start_at": start.isoformat(),
+                "end_at": (start + timedelta(hours=1)).isoformat(),
+            },
             headers=headers(owner),
         )
         client.patch(
@@ -126,7 +129,11 @@ def test_cancel_notice_does_not_swallow_reminder(client, actors, db):
     team, owner, member, headers = actors
     path = f"/api/v1/teams/{team.id}"
     start = datetime.now(UTC) + timedelta(minutes=10)
-    payload = _event(member.id, start_at=start.isoformat(), end_at=(start + timedelta(minutes=30)).isoformat())
+    payload = _event(
+        member.id,
+        start_at=start.isoformat(),
+        end_at=(start + timedelta(minutes=30)).isoformat(),
+    )
     eid = client.post(path + "/events", json=payload, headers=headers(owner)).json()["id"]
     scan_reminders(db)
     client.patch(f"/api/v1/events/{eid}", json={"status": "cancelled"}, headers=headers(owner))

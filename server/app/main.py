@@ -23,7 +23,7 @@ from app.realtime.channel import (
     refresh_team,
 )
 from app.realtime.channel import router as ws_router
-from app.routers import assistant, auth, health, personal, teams, work
+from app.routers import assistant, auth, avatars, health, personal, teams, work
 
 API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 WEB_CSP = (
@@ -93,6 +93,7 @@ def create_app() -> FastAPI:
     app.include_router(assistant.router, prefix=settings.api_v1_prefix)
     app.include_router(health.router)
     app.include_router(auth.router, prefix=settings.api_v1_prefix)
+    app.include_router(avatars.router, prefix=settings.api_v1_prefix)
     app.include_router(teams.router, prefix=settings.api_v1_prefix)
     app.include_router(work.router, prefix=settings.api_v1_prefix)
     app.include_router(personal.router, prefix=settings.api_v1_prefix)

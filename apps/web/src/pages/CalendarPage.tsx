@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Calendar, dateFnsLocalizer, type ToolbarProps, type View } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Avatar } from "../components/Avatar";
 import CalendarTimeline from "../components/CalendarTimeline";
 import FindTimePanel from "../components/FindTimePanel";
 import EventEditor from "../components/EventEditor";
@@ -16,7 +17,7 @@ import { friendlyMessage } from "../lib/errors";
 
 const localizer = dateFnsLocalizer({format,parse,startOfWeek:(d:Date) => startOfWeek(d,{weekStartsOn:1}),getDay,locales:{"zh-CN":zhCN}});
 interface Item { id:string; title:string; label:string; timeLabel:string; start:Date; end:Date; allDay:boolean; color:string; event?:CalendarEvent; taskId?:number; resourceId?:number; personal?:PersonalEvent; }
-interface MemberResource { id:number; title:string; role:string; color:string; }
+interface MemberResource { id:number; title:string; role:string; color:string; avatarUrl?:string | null; }
 
 function CalendarEventBlock({ event }: { event: Item }) {
   return <span className="cal-event"><strong>{event.label}</strong>{event.timeLabel ? <small>{event.timeLabel}</small> : null}</span>;
@@ -49,7 +50,7 @@ function readCalendarState(teamId:number): Partial<StoredCalendarState> | null {
 
 function MemberResourceHeader({ label, resource }: { label: ReactNode; resource: MemberResource }) {
   const role = resource.role === "owner" ? "Owner" : resource.role === "admin" ? "Admin" : "成员";
-  return <span className="resource-head"><span className="resource-avatar" style={{backgroundColor:resource.color}} aria-hidden="true">{String(label).slice(0,1)}</span><span><strong>{label}</strong><small>{role}</small></span></span>;
+  return <span className="resource-head"><Avatar className="resource-avatar" name={String(label)} color={resource.color} url={resource.avatarUrl} /><span><strong>{label}</strong><small>{role}</small></span></span>;
 }
 
 export default function CalendarPage() {
@@ -126,7 +127,7 @@ export default function CalendarPage() {
       : monthLabel;
   const todayLabel = format(new Date(), "M月d日 EEEE", {locale:zhCN});
   const resourceColors = ["#6366f1", "#0f9f8f", "#d97706", "#db2777", "#2563eb"];
-  const resources: MemberResource[] = (members.data?.items || []).map((m, i) => ({ id:m.user_id, title:m.display_name, role:m.role, color:resourceColors[i % resourceColors.length] }));
+  const resources: MemberResource[] = (members.data?.items || []).map((m, i) => ({ id:m.user_id, title:m.display_name, role:m.role, color:resourceColors[i % resourceColors.length], avatarUrl:m.avatar_url }));
   const personalItems = useMemo<Item[]>(() => myPersonal.map(e => ({
     id: `p${e.id}`,
     title: `${e.title}（个人）`,

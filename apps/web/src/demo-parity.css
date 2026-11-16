@@ -1602,6 +1602,36 @@ body {
   font-weight: 700;
 }
 
+/* AUTH-8：上传头像的图片形态与首字母块保持同一尺寸/圆角。 */
+.avatar-image,
+.member-avatar.avatar-image,
+.resource-avatar.avatar-image,
+.profile-avatar.avatar-image {
+  object-fit: cover;
+  background: var(--surface-3);
+}
+
+.profile-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-avatar-hint {
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.profile-avatar-error {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 11px;
+  text-align: center;
+}
+
 .profile-card strong {
   font-size: 14px;
 }

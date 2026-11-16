@@ -1,15 +1,15 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { describe, expect, it } from "vitest";
+
+import demoParityCss from "../demo-parity.css?raw";
+import aiAssistantCss from "./AiAssistant.css?raw";
 
 /**
  * 回归：团队日历下侧栏条目较多时，滚动容器必须落在深色侧栏上，
  * 不能溢出到 .app-shell 的白底（用户 2026-11-16 反馈截图）。
  * happy-dom 不做排版，这里直接校验样式声明，Playwright 再做真实截图回归。
  */
-const css = readFileSync(resolve(process.cwd(), "src/demo-parity.css"), "utf8");
-const aiCss = readFileSync(resolve(process.cwd(), "src/components/AiAssistant.css"), "utf8");
+const css = demoParityCss;
+const aiCss = aiAssistantCss;
 
 function block(source: string, selector: string): string {
   const start = source.indexOf(`${selector} {`);

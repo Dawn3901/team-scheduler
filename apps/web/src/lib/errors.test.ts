@@ -30,6 +30,15 @@ describe("friendlyMessage", () => {
     );
   });
 
+  it("maps avatar upload errors (AUTH-8)", () => {
+    expect(
+      friendlyMessage(new ApiError(415, "INVALID_AVATAR", "头像只支持 JPEG、PNG 或 WebP 图片")),
+    ).toBe("头像只支持 JPEG、PNG 或 WebP 图片");
+    expect(friendlyMessage(new ApiError(413, "AVATAR_TOO_LARGE", ""))).toBe(
+      "头像不能超过 2 MB，请压缩后重试",
+    );
+  });
+
   it("hides validation details behind a friendly message", () => {
     expect(friendlyMessage(new ApiError(400, "VALIDATION_ERROR", "请求参数不合法"))).toBe(
       "请检查填写内容",
