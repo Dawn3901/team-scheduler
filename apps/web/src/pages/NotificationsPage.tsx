@@ -49,6 +49,9 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [opening, setOpening] = useState(false);
   const [error, setError] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 60000 });
   const inboxTotal = inbox.data?.total ?? 0;
@@ -71,7 +74,28 @@ export default function NotificationsPage() {
 
   const switchTab = (next: "pending" | "all") => {
     setParams(next === "pending" ? { tab: "pending" } : {}, { replace: true });
+    setExpanded(null);
   };
+
+  const notices = useQuery({
+    queryKey: ["notifications", offset, unreadOnly],
+    queryFn: () => listNotifications(offset, unreadOnly),
+    enabled: tab === "all",
+  });
+  const action = useAction();
+  const groups = groupNotices(notices.data?.items ?? []);
+
+  const openGroup = (group: NoticeGroup) => {
+    const path = targetPath(group);
+    void action.run(async () => {
+      for (const item of group.items) if (!item.read_at) await readNotification(item.id);
+      if (path) navigate(path);
+    }).catch(() => {});
+  };
+  const markGroupRead = (group: NoticeGroup) =>
+    void action.run(async () => {
+      for (const item of group.items) if (!item.read_at) await readNotification(item.id);
+    }).catch(() => {});
 
   return (
     <section className="panel notifications-panel">
@@ -86,6 +110,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
+      <div className="notice-toolbar">
       <div className="notice-tabs" role="tablist" aria-label="通知分类">
         <button
           type="button"
@@ -106,12 +131,53 @@ export default function NotificationsPage() {
           全部动态
         </button>
       </div>
+      {tab === "all" && (
+        <div className="panel-actions notice-toolbar-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            aria-pressed={unreadOnly}
+            onClick={() => {
+              setUnreadOnly(!unreadOnly);
+              setOffset(0);
+              setExpanded(null);
+            }}
+          >
+            {unreadOnly ? "显示全部" : "仅显示未读"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={action.pending}
+            onClick={() => void action.run(readAllNotifications).catch(() => {})}
+          >
+            全部已读
+          </button>
+        </div>
+      )}
+      </div>
 
       {tab === "pending" ? (
         <PendingTab inbox={inbox.data} pending={inbox.isPending} error={inbox.isError ? inbox.error : null}
           busy={opening} message={error} onRetry={() => void inbox.refetch()} onOpen={item => void open(item)} />
       ) : (
-        <AllTab onGoPending={() => switchTab("pending")} />
+        <AllTab
+          groups={groups}
+          pending={notices.isPending}
+          error={notices.isError ? notices.error : null}
+          total={notices.data?.items.length ?? 0}
+          pageTotal={notices.data?.total ?? 0}
+          offset={offset}
+          unreadOnly={unreadOnly}
+          expanded={expanded}
+          actionPending={action.pending}
+          onRetry={() => void notices.refetch()}
+          onOpen={openGroup}
+          onMarkRead={markGroupRead}
+          onExpand={key => setExpanded(expanded === key ? null : key)}
+          onOffset={setOffset}
+          onGoPending={() => switchTab("pending")}
+        />
       )}
     </section>
   );
@@ -183,62 +249,60 @@ function PendingTab({
   );
 }
 
-function AllTab({ onGoPending }: { onGoPending: () => void }) {
-  const [offset, setOffset] = useState(0);
-  const [unread, setUnread] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const query = useQuery({
-    queryKey: ["notifications", offset, unread],
-    queryFn: () => listNotifications(offset, unread),
-  });
-  const action = useAction();
-  const navigate = useNavigate();
-  const groups = groupNotices(query.data?.items ?? []);
-
-  const openGroup = (group: NoticeGroup) => {
-    const path = targetPath(group);
-    void action.run(async () => {
-      for (const item of group.items) if (!item.read_at) await readNotification(item.id);
-      if (path) navigate(path);
-    }).catch(() => {});
-  };
-  const markGroupRead = (group: NoticeGroup) =>
-    void action.run(async () => {
-      for (const item of group.items) if (!item.read_at) await readNotification(item.id);
-    }).catch(() => {});
-
+function AllTab({
+  groups,
+  pending,
+  error,
+  total,
+  pageTotal,
+  offset,
+  unreadOnly,
+  expanded,
+  actionPending,
+  onRetry,
+  onOpen,
+  onMarkRead,
+  onExpand,
+  onOffset,
+  onGoPending,
+}: {
+  groups: NoticeGroup[];
+  pending: boolean;
+  error: unknown;
+  total: number;
+  pageTotal: number;
+  offset: number;
+  unreadOnly: boolean;
+  expanded: string | null;
+  actionPending: boolean;
+  onRetry: () => void;
+  onOpen: (group: NoticeGroup) => void;
+  onMarkRead: (group: NoticeGroup) => void;
+  onExpand: (key: string) => void;
+  onOffset: (offset: number) => void;
+  onGoPending: () => void;
+}) {
+  if (error) {
+    return (
+      <p role="alert">
+        {friendlyMessage(error)}
+        <button type="button" className="link-btn" onClick={onRetry}>重试</button>
+      </p>
+    );
+  }
+  if (pending) return <p>通知加载中…</p>;
+  if (!pending && total === 0) {
+    return (
+      <p className="muted">
+        {unreadOnly ? "没有未读动态。" : "还没有动态。被邀请、被指派、活动改期或有人 @ 你时，会记录在这里。"}
+        {!unreadOnly && (
+          <button type="button" className="link-btn" onClick={onGoPending}>看待处理</button>
+        )}
+      </p>
+    );
+  }
   return (
     <>
-      <div className="panel-actions">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          aria-pressed={unread}
-          onClick={() => {
-            setUnread(!unread);
-            setOffset(0);
-            setExpanded(null);
-          }}
-        >
-          {unread ? "显示全部" : "仅显示未读"}
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          disabled={action.pending}
-          onClick={() => void action.run(readAllNotifications).catch(() => {})}
-        >
-          全部已读
-        </button>
-      </div>
-      {query.isError && <p role="alert">{friendlyMessage(query.error)}</p>}
-      {query.isPending && <p>通知加载中…</p>}
-      {query.data?.items.length === 0 && (
-        <p className="muted">
-          还没有动态。被邀请、被指派、活动改期或有人 @ 你时，会记录在这里。
-          <button type="button" className="link-btn" onClick={onGoPending}>看待处理</button>
-        </p>
-      )}
       {groups.map(group => {
         const unreadCount = groupUnread(group);
         const isOpen = expanded === group.key;
@@ -248,7 +312,7 @@ function AllTab({ onGoPending }: { onGoPending: () => void }) {
             key={group.key}
             data-testid="notice-group"
           >
-            <button type="button" className="notice-main" onClick={() => openGroup(group)}>
+            <button type="button" className="notice-main" onClick={() => onOpen(group)}>
               <span className="notice-title">
                 <span className="notice-type">{group.typeLabel}</span>
                 <strong>{group.title}</strong>
@@ -267,7 +331,7 @@ function AllTab({ onGoPending }: { onGoPending: () => void }) {
                     type="button"
                     className="link-btn"
                     aria-expanded={isOpen}
-                    onClick={() => setExpanded(isOpen ? null : group.key)}
+                    onClick={() => onExpand(group.key)}
                   >
                     {isOpen ? "收起" : `另 ${group.items.length - 1} 条`}
                   </button>
@@ -276,8 +340,8 @@ function AllTab({ onGoPending }: { onGoPending: () => void }) {
                   <button
                     type="button"
                     className="link-btn"
-                    disabled={action.pending}
-                    onClick={() => markGroupRead(group)}
+                    disabled={actionPending}
+                    onClick={() => onMarkRead(group)}
                   >
                     标为已读
                   </button>
@@ -298,10 +362,24 @@ function AllTab({ onGoPending }: { onGoPending: () => void }) {
           </div>
         );
       })}
-      <div className="panel-actions">
-        <button disabled={offset === 0} onClick={() => setOffset(offset - 20)}>上一页</button>
-        <span>{offset + 1} / {query.data?.total ?? 0}</span>
-        <button disabled={!query.data || offset + 20 >= query.data.total} onClick={() => setOffset(offset + 20)}>下一页</button>
+      <div className="panel-actions notice-pager">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={offset === 0}
+          onClick={() => onOffset(offset - 20)}
+        >
+          上一页
+        </button>
+        <span className="muted">{Math.floor(offset / 20) + 1} / {Math.max(1, Math.ceil(pageTotal / 20))}</span>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={offset + 20 >= pageTotal}
+          onClick={() => onOffset(offset + 20)}
+        >
+          下一页
+        </button>
         <Link className="btn btn-secondary" to="/app">返回我的团队</Link>
       </div>
     </>

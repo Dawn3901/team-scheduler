@@ -60,7 +60,8 @@ export function AppShell() {
     navigate("/login", { replace: true });
   };
 
-  const navItems: Array<{ to: string; label: string; icon: IconName; end?: boolean; badge?: number }> = teamId
+  type NavItem = { to: string; label: string; icon: IconName; end?: boolean; badge?: number };
+  const navItems: NavItem[] = teamId
     ? [
         { to: `/app/teams/${teamId}/calendar`, label: "团队日历", icon: "calendar" },
         { to: `/app/teams/${teamId}/tasks`, label: "任务看板", icon: "tasks" },
@@ -81,6 +82,12 @@ export function AppShell() {
         { to: "/app/tutorial", label: "新手教程", icon: "help" },
         { to: "/app/about", label: "关于", icon: "info" },
       ];
+  // 按路由归属分区，而不是按数组下标：团队路由永远留在“团队”区，
+  // 避免以后往团队区插菜单时把“团队设置”挤到“账户”下面。
+  const inTeamSection = (item: NavItem) =>
+    teamId ? item.to.startsWith(`/app/teams/${teamId}`) : item.to === "/app";
+  const teamItems = navItems.filter(inTeamSection);
+  const accountItems = navItems.filter(item => !inTeamSection(item));
 
   return (
     <div className="app-shell">
@@ -121,7 +128,7 @@ export function AppShell() {
         </Link>
 
         <nav className="side-nav" aria-label="工作台导航">
-          {navItems.slice(0, teamId ? 4 : 1).map((item) => (
+          {teamItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -139,7 +146,7 @@ export function AppShell() {
         <div className="side-nav-section">
           <p className="side-nav-label">账户</p>
           <nav className="side-nav" aria-label="账户导航">
-            {navItems.slice(teamId ? 4 : 1).map((item) => (
+            {accountItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -148,6 +155,7 @@ export function AppShell() {
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
+                {item.badge ? <span className="nav-badge" aria-label={`${item.badge} 条待处理`}>{item.badge}</span> : null}
               </NavLink>
             ))}
           </nav>
