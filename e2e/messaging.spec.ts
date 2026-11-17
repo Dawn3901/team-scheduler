@@ -193,6 +193,12 @@ test("通知 · 待处理：被 @ 后出现提醒，打开后清零", async ({ b
   await expect(member.getByText("核对日程")).toBeVisible();
   await expect(member.locator(".inbox-kind").filter({ hasText: "@我" })).toBeVisible();
 
+  // “全部动态”里类型必须显示中文名，不能露出 message.mentioned 这类内部代码。
+  await member.getByRole("tab", { name: "全部动态" }).click();
+  await expect(member.locator(".notice-type").filter({ hasText: "有人 @ 你" }).first()).toBeVisible();
+  await expect(member.getByText("message.mentioned")).toHaveCount(0);
+  await member.getByRole("tab", { name: /待处理/ }).click();
+
   await member.getByRole("button", { name: /核对日程/ }).click();
   await expect(member.getByRole("heading", { name: "任务看板" })).toBeVisible();
   await member.goto("/app/inbox");

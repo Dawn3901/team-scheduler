@@ -168,3 +168,10 @@ event_participants  + note TEXT NULL                                    -- 既�
 - 后端：`notify()` 增可选 `body`；消息通知文案改为内容优先；通告创建自动回执。无迁移。
 - 前端：`MentionTextarea`、活动表单备注、收件箱/通知展示、活动讨论去掉“说明”。
 - 测试：pytest +2（发布者免确认、通知内容是摘要），Vitest +2（手打 @、撤销 @），E2E +1（新建活动 @）。
+
+### 通知类型展示名修正（2026-11-17）
+
+新增的三类通知在通知页直接显示了内部代码（`message.mentioned` / `announcement.published`），已修：
+补 `有人 @ 你` / `新消息` / `新通告` 展示名，同时补上原先遗漏的 `task.updated`（任务变更）；
+未知类型统一显示“通知”，不再回退到原始代码。同一条通告的多条通知也按对象合并成一组。
+新增 `noticeGroups.test.ts` 断言“后端 12 种类型都有中文名、未知类型有兜底”，E2E 额外断言通知页不出现 `message.mentioned`。

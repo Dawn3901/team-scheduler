@@ -15,9 +15,11 @@ export interface NoticeGroup {
 }
 
 function targetKey(notice: Notice): string | null {
-  const { team_id, event_id, task_id } = notice.payload;
+  const { team_id, event_id, task_id, announcement_id } = notice.payload;
   if (event_id) return `event:${team_id ?? 0}:${event_id}`;
   if (task_id) return `task:${team_id ?? 0}:${task_id}`;
+  // 一条通告反复编辑/追问时也归到同一组，避免同一通告刷出多条。
+  if (announcement_id) return `announcement:${team_id ?? 0}:${announcement_id}`;
   return null;
 }
 
@@ -32,19 +34,29 @@ function cleanTitle(title: string): string {
   return title.replace(/[「」]/g, "").trim();
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  "event.invited": "活动邀请",
+  "event.updated": "活动变更",
+  "event.cancelled": "活动取消",
+  "event.reminder": "活动提醒",
+  "rsvp.updated": "回应更新",
+  "task.assigned": "任务指派",
+  "task.updated": "任务变更",
+  "task.due_soon": "即将到期",
+  "task.overdue": "任务逾期",
+  // CR-016：团队沟通
+  "message.mentioned": "有人 @ 你",
+  "message.created": "新消息",
+  "announcement.published": "新通告",
+};
+
+/** 未知类型统一显示“通知”，绝不把 message.mentioned 这类内部代码暴露给用户。 */
 export function groupLabel(type: string): string {
-  const labels: Record<string, string> = {
-    "event.invited": "活动邀请",
-    "event.updated": "活动变更",
-    "event.cancelled": "活动取消",
-    "event.reminder": "活动提醒",
-    "rsvp.updated": "回应更新",
-    "task.assigned": "任务指派",
-    "task.due_soon": "即将到期",
-    "task.overdue": "任务逾期",
-  };
-  return labels[type] ?? type;
+  return TYPE_LABELS[type] ?? "通知";
 }
+
+/** 测试与文档用：暴露已登记的类型，方便发现前端漏配标签。 */
+export const KNOWN_NOTIFICATION_TYPES = Object.keys(TYPE_LABELS);
 
 export function groupNotices(items: Notice[]): NoticeGroup[] {
   // 输入已按时间倒序；保持首次出现的顺序即“最近在前”。
