@@ -19,6 +19,7 @@
 | [CR-013](CR-013-个人日历视图改版.md) | 个人日历月/周/任务清单三视图 | **用户确认 · 实施中**（2026-11-14） | 新增 `/me/agenda`（契约 42）；移除 share_busy 开关 |
 | [CR-014](CR-014-ai-assistant.md) | 可拖动 AI 日程助手 | **用户要求 · 已实施 · 待 A/B 复核**（2026-11-16） | 新增 `/teams/{id}/assistant/chat` 与 503 `AI_UNAVAILABLE`（契约 43） |
 | [CR-015](CR-015-user-avatar-and-notification-merge.md) | 用户上传头像（AUTH-8）+ 同一活动同类通知合并 | **用户要求 · 已实施 · 待 A/B 复核**（2026-11-16） | 新增两个头像接口（契约 45）、迁移 `a71c4f0d2e93`、依赖 python-multipart；侧栏布局修复 |
+| [CR-016](CR-016-team-messages-announcements.md) | 团队沟通一期：统一消息 + 通告 + 参与者备注 + 收件箱 | **用户确认 · 已实施 · 待 A/B 复核**（2026-11-17） | 5 张新表 + `event_participants.note`、迁移 `c8f21d4b7a90`、14 个新端点（契约 59）；见 [ADR-006](ADR-006-object-scoped-messaging.md) |
 
 > **本期排期顺序**：CR-006 → CR-007 → CR-002（2026-11-09 决定）。整体排期见 [六周计划 §5 P1 排期](../01-六周项目计划.md) 和 [W2 进度与 P1 排期](../dev/08-W2进度与P1排期-2026-11-09.md)；任一门禁风险时 P1 先让路。
 >
@@ -31,6 +32,7 @@
 | ADR-002 | 四项协作拓展实施（与 CR-009 同文） | 已实施 · 待验收 | [CR-009](CR-009-four-extensions.md) |
 | [ADR-003](ADR-003-实现现状与冻结基线差异.md) | 实现现状与冻结基线差异 | Proposed（待 A/B 批准） | APScheduler/Zustand/RHF/Zod/Tailwind/Radix/Capacitor 与当前实现的差异 |
 | [ADR-004](ADR-004-个人日历与团队单日历边界.md) | 个人日历与“单团队单日历”边界 | Proposed（待 A/B 复核） | CR-002 的用户级忙碌层，不是团队多日历 |
+| [ADR-006](ADR-006-object-scoped-messaging.md) | 团队沟通采用“对象内消息”，不做 IM | Proposed（待 A/B 复核） | CR-016；通告是对象、备注是字段级可见性、阻塞不改枚举 |
 
 ## 未立 CR / 明确暂不做
 

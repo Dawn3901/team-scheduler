@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { logout } from "@teamsync/shared";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchInbox, logout } from "@teamsync/shared";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Avatar } from "./Avatar";
@@ -14,11 +14,13 @@ const pageLabels: Record<string, string> = {
   tasks: "任务看板",
   members: "团队成员",
   settings: "团队设置",
-  notifications: "通知中心",
+  notifications: "通知",
   profile: "个人资料",
   tutorial: "新手教程",
   about: "关于",
   me: "我的日程",
+  inbox: "通知",
+  announcements: "团队通告",
 };
 
 function pageLabel(pathname: string): string {
@@ -38,6 +40,12 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // 通知角标 = 待处理数（合并收件箱后唯一来源）：离开页面也要更新，因此轮询。
+  const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 60000 });
+  // 接口失败或返回不完整时不能影响整个外壳渲染。
+  const inboxTotal = inbox.data?.total ?? 0;
+  const unackedAnnouncements = inbox.data?.counts?.announcements ?? 0;
+
   const match = location.pathname.match(/^\/app\/teams\/(\d+)/);
   const teamId = match ? Number(match[1]) : 0;
   const team = useTeam(teamId).data;
@@ -52,13 +60,15 @@ export function AppShell() {
     navigate("/login", { replace: true });
   };
 
-  const navItems: Array<{ to: string; label: string; icon: IconName; end?: boolean }> = teamId
+  type NavItem = { to: string; label: string; icon: IconName; end?: boolean; badge?: number };
+  const navItems: NavItem[] = teamId
     ? [
         { to: `/app/teams/${teamId}/calendar`, label: "团队日历", icon: "calendar" },
         { to: `/app/teams/${teamId}/tasks`, label: "任务看板", icon: "tasks" },
+        { to: `/app/teams/${teamId}/announcements`, label: "团队通告", icon: "bell", badge: unackedAnnouncements },
         { to: `/app/teams/${teamId}/members`, label: "团队成员", icon: "users" },
         { to: `/app/teams/${teamId}/settings`, label: "团队设置", icon: "settings" },
-        { to: "/app/notifications", label: "通知中心", icon: "bell" },
+        { to: "/app/notifications", label: "通知", icon: "bell", badge: inboxTotal },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/me/calendar", label: "我的日程", icon: "user" },
         { to: "/app/tutorial", label: "新手教程", icon: "help" },
@@ -66,12 +76,18 @@ export function AppShell() {
       ]
     : [
         { to: "/app", label: "我的团队", icon: "users", end: true },
-        { to: "/app/notifications", label: "通知中心", icon: "bell" },
+        { to: "/app/notifications", label: "通知", icon: "bell", badge: inboxTotal },
         { to: "/app/me/calendar", label: "我的日程", icon: "calendar" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/tutorial", label: "新手教程", icon: "help" },
         { to: "/app/about", label: "关于", icon: "info" },
       ];
+  // 按路由归属分区，而不是按数组下标：团队路由永远留在“团队”区，
+  // 避免以后往团队区插菜单时把“团队设置”挤到“账户”下面。
+  const inTeamSection = (item: NavItem) =>
+    teamId ? item.to.startsWith(`/app/teams/${teamId}`) : item.to === "/app";
+  const teamItems = navItems.filter(inTeamSection);
+  const accountItems = navItems.filter(item => !inTeamSection(item));
 
   return (
     <div className="app-shell">
@@ -112,7 +128,7 @@ export function AppShell() {
         </Link>
 
         <nav className="side-nav" aria-label="工作台导航">
-          {navItems.slice(0, teamId ? 4 : 1).map((item) => (
+          {teamItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -122,6 +138,7 @@ export function AppShell() {
             >
               <Icon name={item.icon} />
               <span>{item.label}</span>
+              {item.badge ? <span className="nav-badge" aria-label={`${item.badge} 条待处理`}>{item.badge}</span> : null}
             </NavLink>
           ))}
         </nav>
@@ -129,7 +146,7 @@ export function AppShell() {
         <div className="side-nav-section">
           <p className="side-nav-label">账户</p>
           <nav className="side-nav" aria-label="账户导航">
-            {navItems.slice(teamId ? 4 : 1).map((item) => (
+            {accountItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -138,6 +155,7 @@ export function AppShell() {
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
+                {item.badge ? <span className="nav-badge" aria-label={`${item.badge} 条待处理`}>{item.badge}</span> : null}
               </NavLink>
             ))}
           </nav>

@@ -1,4 +1,5 @@
-import { ApiError, createEvent, getEvent, inviteParticipants, localInput, shiftDate, toUtc, updateEvent, type CalendarEvent, type EventInput, type EventScope, type Member } from "@teamsync/shared";
+import { ApiError, createEvent, createEventMessage, getEvent, inviteParticipants, localInput, shiftDate, toUtc, updateEvent, type CalendarEvent, type EventInput, type EventScope, type Member } from "@teamsync/shared";
+import { MentionTextarea } from "./MentionTextarea";
 import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
@@ -31,6 +32,9 @@ export default function EventEditor({teamId, timezone, members, current, initial
   const [allDay, setAllDay] = useState(current?.all_day || false);
   const [scope,setScope] = useState<EventScope>("this");
   const started = current ? Date.parse(current.start_at) <= now && scope === "this" : false;
+  // CR-016 反馈：新建活动时也能 @ 成员——备注输入支持手打 @，选中的人会收到提及通知。
+  const [noteText, setNoteText] = useState("");
+  const [noteMentions, setNoteMentions] = useState<number[]>([]);
   const [conflicts, setConflicts] = useState<{display_name:string; start_at:string; title:string|null}[]>([]);
   const [retry, setRetry] = useState<(() => Promise<unknown>) | null>(null);
   const start = localInput(current?.start_at || initial || new Date(now+3600000).toISOString(), timezone);
@@ -67,10 +71,30 @@ export default function EventEditor({teamId, timezone, members, current, initial
               delete (changes as Partial<typeof changes>).end_at;
               delete (changes as Partial<typeof changes>).location;
             }
+            const moved = startLocal !== localInput(current.start_at,timezone) || endLocal !== localInput(current.end_at,timezone);
             await updateEvent(current.id, {...changes, scope:String(f.get("scope") || "this") as EventScope});
             const added = participant_ids.filter(uid => !current.participants.some(p => p.user_id === uid));
+            const note = noteText.trim();
+            // 不再写“参与者备注”：私密要求统一走讨论 @，避免同一句话有两个可见范围。
             if(added.length) await inviteParticipants(current.id, added);
-          } else await createEvent(teamId, data);
+            if(note) await createEventMessage(current.id, {
+              kind: "note",
+              body: note,
+              ...(noteMentions.length ? {mention_user_ids: noteMentions} : {}),
+            });
+            if(moved || String(f.get("status") || "") === "cancelled") {
+              const reason = String(f.get("reason") || "").trim();
+              if(reason) await createEventMessage(current.id, {kind: moved ? "change_reason" : "note", body: reason});
+            }
+          } else {
+            const created = await createEvent(teamId, data);
+            const note = noteText.trim();
+            if(note) await createEventMessage(created.id, {
+              kind: "note",
+              body: note,
+              ...(noteMentions.length ? {mention_user_ids: noteMentions} : {}),
+            });
+          }
           onClose();
         } catch(err) {
           if(err instanceof ApiError && err.code === "TIME_CONFLICT") {
@@ -89,7 +113,24 @@ export default function EventEditor({teamId, timezone, members, current, initial
       <label>{allDay ? "结束日期（含当天）" : "结束时间"}<input key={`end-${allDay}`} name="end" readOnly={started} type={allDay ? "date" : "datetime-local"} defaultValue={allDay ? (current?.all_day ? shiftDate(end.slice(0,10),-1) : end.slice(0,10)) : end} required /></label>
       <label>地点<input name="location" readOnly={started} defaultValue={current?.location || ""} /></label>
       <label>活动描述<textarea name="description" maxLength={2000} defaultValue={current?.description || ""} /></label>
+      {current && <label>变更原因（可选，会写进活动讨论并通知参与者）<input name="reason" maxLength={500} placeholder="例如：场地被占用" /></label>}
       <label>可见性<select name="visibility" defaultValue={current?.visibility || "team"}><option value="team">团队可见</option><option value="private">私密（仅组织者和参与者）</option></select></label>
+      <div className="work-note-field">
+        <span className="work-note-label">留言（写入活动讨论，可 @ 成员）</span>
+        <MentionTextarea
+          value={noteText}
+          onChange={setNoteText}
+          mentions={noteMentions}
+          onMentionsChange={setNoteMentions}
+          members={invitableMembers}
+          currentUserId={currentUserId}
+          rows={2}
+          maxLength={500}
+          ariaLabel="留言"
+          placeholder="例如：记得带电脑；输入 @ 可以直接提醒某位成员"
+        />
+        <p className="muted">会作为一条讨论留在活动里；@ 到的成员会收到提及通知。</p>
+      </div>
       <fieldset><legend>邀请成员</legend>
         <div className="participant-tools"><button type="button" className="btn btn-ghost" disabled={toggleable.length === 0} onClick={toggleAll}>{allSelected ? "取消邀请全员" : "邀请全员"}</button></div>
         <div className="participant-list">

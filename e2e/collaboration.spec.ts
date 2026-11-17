@@ -174,8 +174,10 @@ test("忙闲 → 冲突提示 → 强制保存 → 活动取消",async ({page}) 
   await expect(page.getByRole("heading",{name:"本周成员忙闲"})).toBeVisible();
   await page.goto(`${base}/events/${first.id}`);
   page.on("dialog", dialog => dialog.accept());
+  // 取消＝软删除 + 通知参与者：取消后回到日历，活动不再出现。
   await page.getByRole("button",{name:"取消活动",exact:true}).click();
-  await expect(page.getByText(/已取消/)).toBeVisible();
+  await expect(page.getByRole("heading",{name:"团队日历",exact:true})).toBeVisible();
+  await expect(page.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({hasText:"第一场会议"})).toHaveCount(0);
 });
 
 test("任务指派 → 完成 → 日历截止 → 重开与删除",async ({page}) => {

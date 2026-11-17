@@ -212,7 +212,7 @@ export default function CalendarPage() {
       </section>
 
       <section className="side-card">
-        <div className="side-card-head"><h3>待回应邀请 <span className="side-count">{invites.length}</span></h3><Link to="/app/notifications">通知中心</Link></div>
+        <div className="side-card-head"><h3>待回应邀请 <span className="side-count">{invites.length}</span></h3><Link to="/app/notifications">通知</Link></div>
         {invites.length === 0 ? <p className="side-empty">暂无待回应邀请</p> : invites.slice(0, 3).map(e => <Link className="side-invite" key={e.id} to={`/app/teams/${id}/events/${e.id}`}><span className="side-invite-icon">邀</span><span><strong>{e.title}</strong><small>{formatTime(e.start_at, zone)}</small></span></Link>)}
       </section>
 

@@ -15,9 +15,16 @@ export type IconName =
   | "plus"
   | "help"
   | "info"
-  | "user";
+  | "user"
+  | "inbox";
 
 const icons: Record<IconName, ReactNode> = {
+  inbox: (
+    <>
+      <path d="M3 12l3-7h12l3 7v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <path d="M3 12h5l2 3h4l2-3h5" />
+    </>
+  ),
   calendar: (
     <>
       <rect x="3" y="5" width="18" height="16" rx="3" />

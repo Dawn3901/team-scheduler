@@ -2200,3 +2200,227 @@ body {
 .personal-calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .personal-calendar-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--legend); }
 .personal-task-list { display: grid; gap: 14px; margin-top: 8px; }
+
+/* ---------- CR-016：对象内讨论 / 通告 / 收件箱 ---------- */
+
+.thread {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.thread-compact { padding: 12px; border-radius: 12px; }
+
+.thread-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.thread-head h3 { margin: 0; font-size: 14px; }
+.thread-head .muted { font-size: 11px; }
+.thread-head .link-btn { margin-left: auto; }
+
+.thread-empty { margin: 0; font-size: 12px; }
+
+.thread-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.thread-item { display: flex; gap: 10px; align-items: flex-start; }
+
+.thread-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.thread-body { min-width: 0; flex: 1; }
+.thread-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; flex-wrap: wrap; }
+.thread-meta strong { font-size: 12px; color: var(--ink); }
+.thread-text { margin: 4px 0 0; font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.thread-kind {
+  padding: 1px 6px; border-radius: 6px;
+  background: var(--surface-3); color: var(--muted); font-weight: 650;
+}
+.thread-blocker .thread-kind { background: var(--warn-soft); color: var(--warn); }
+.thread-unblock .thread-kind { background: var(--teal-soft); color: var(--teal); }
+.thread-requirement .thread-kind { background: var(--accent-soft); color: var(--accent-strong); }
+
+.thread-form { display: grid; gap: 8px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+.thread-form textarea {
+  width: 100%; resize: vertical; min-height: 56px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 12.5px;
+}
+.thread-kind-select select { font-size: 11.5px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.thread-mentions { display: flex; gap: 6px; flex-wrap: wrap; }
+.thread-actions { display: flex; justify-content: flex-end; }
+.thread-error { margin: 0; color: var(--danger); font-size: 11.5px; }
+
+.chip {
+  padding: 3px 8px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: var(--surface-2);
+  color: var(--muted); font-size: 11px; cursor: pointer;
+}
+.chip-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+
+.announcement-card {
+  display: grid; gap: 6px;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface);
+}
+.announcement-card.pinned { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
+.announcement-card.expired { opacity: 0.6; }
+.announcement-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.announcement-head h3 { margin: 0; font-size: 14px; }
+.announcement-body { margin: 0; font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.announcement-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.announcement-foot .btn { margin-left: auto; }
+.ack-progress { display: inline-flex; align-items: center; gap: 6px; }
+.ack-bar { width: 84px; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.ack-bar > span { display: block; height: 100%; background: var(--teal); }
+
+.inbox-item {
+  display: grid; gap: 4px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); text-align: left; cursor: pointer;
+}
+.inbox-item:hover { border-color: var(--accent); }
+.inbox-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.inbox-kind { padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-strong); font-size: 10px; font-weight: 650; }
+.inbox-context { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.inbox-content {
+  margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--ink);
+  line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .thread { padding: 12px; border-radius: 12px; }
+  .thread-list { max-height: 320px; }
+  .thread-mentions { max-height: 74px; overflow-y: auto; }
+}
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.participant-note {
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11.5px;
+}
+
+.participant-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rsvp-block { display: grid; gap: 8px; margin: 10px 0; }
+.rsvp-block label { font-size: 11.5px; color: var(--muted); }
+.rsvp-block input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 12.5px; }
+.event-messages { margin-top: 18px; }
+.announcement-list { display: grid; gap: 12px; }
+.announcement-manage { display: inline-flex; gap: 10px; margin-left: auto; }
+.inbox-list { display: grid; gap: 10px; }
+.inbox-item { font: inherit; }
+.receipt-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; max-height: 320px; overflow-y: auto; }
+.receipt-list li { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.receipt-list li .muted { margin-left: auto; font-size: 11px; }
+.receipt-list li.acked > span:nth-child(2) { color: var(--ink); font-weight: 600; }
+.note-form { margin: 10px 0; padding: 12px; border: 1px dashed var(--line-strong); border-radius: 12px; }
+.thread-dialog { max-height: 86vh; overflow-y: auto; }
+.inline-check { display: flex !important; align-items: center; gap: 8px; }
+
+.mention-field { position: relative; display: grid; }
+.mention-field textarea {
+  width: 100%; resize: vertical; min-height: 56px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 12.5px;
+}
+.mention-menu {
+  position: absolute; z-index: 20; left: 0; bottom: calc(100% + 4px);
+  min-width: 160px; max-height: 190px; overflow-y: auto;
+  margin: 0; padding: 4px; list-style: none;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--surface); box-shadow: 0 12px 30px rgb(15 23 42 / 16%);
+}
+.mention-option {
+  display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 7px;
+  background: none; color: var(--ink-2); font: inherit; font-size: 12px;
+  text-align: left; cursor: pointer;
+}
+.mention-option:hover, .mention-option.active { background: var(--accent-soft); color: var(--accent-strong); }
+.thread-form .mention-field textarea { min-height: 56px; }
+
+.work-note-field { display: grid; gap: 6px; }
+.work-note-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.work-note-field .muted { margin: 0; font-size: 11px; }
+
+/* 合并后的通知页：待处理 / 全部动态 */
+.notice-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 4px 0 14px;
+}
+.notice-tabs { display: flex; gap: 6px; }
+.notice-tab {
+  padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: var(--surface-2);
+  color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.notice-tab.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.notice-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 放得下时标签与右侧操作同一横排，放不下才换行。 */
+.notice-toolbar-actions { margin-left: auto; padding: 0; }
+.notice-toolbar-actions .btn { padding: 6px 12px; font-size: 12px; }
+.notice-pager { justify-content: flex-end; align-items: center; gap: 8px; }
+.notice-pager .btn { padding: 6px 12px; font-size: 12px; }
+
+/* 活动详情：顶部操作与参与者行内回应（CR-016 第四轮） */
+.event-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.event-scope select { font-size: 11.5px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.participant-main { display: grid; gap: 2px; min-width: 0; }
+.participant-name { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.participant-name small { font-size: 11px; }
+.participant-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.rsvp-actions { display: flex; gap: 6px; }
+.rsvp-actions .btn { padding: 5px 12px; font-size: 12px; }
+.rsvp-chip {
+  padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 650;
+  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--muted);
+}
+.rsvp-chip.accepted { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.rsvp-chip.tentative { border-color: #d97706; background: #fef3c7; color: #b45309; }
+.rsvp-chip.declined { border-color: var(--danger); background: #fee2e2; color: var(--danger); }
+.rsvp-chip.pending { border-style: dashed; }
+.rsvp-chip.organizer { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.rsvp-remove { color: var(--danger); font-size: 16px; line-height: 1; padding: 2px 6px; }
+.rsvp-remove:hover { background: #fee2e2; }
+.rsvp-note-field { display: grid; gap: 6px; margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+.rsvp-note-field input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px;
+  font: inherit; font-size: 12.5px;
+}
+.participant-row.is-me { border-color: var(--accent); }

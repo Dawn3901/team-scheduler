@@ -11,6 +11,8 @@ export interface Recurrence { frequency: "weekly" | "biweekly"; count?: number; 
 export interface Participant {
   needs_confirmation?: boolean;
   user_id: number; display_name: string; response: Rsvp; is_organizer: boolean;
+  /** NOTE-1：仅组织者/Admin 与本人可见；其他人恒为 null。 */
+  note?: string | null;
 }
 export interface CalendarEvent {
   series_id?: number | null; original_start?: string | null; series_count?: number;
@@ -27,6 +29,8 @@ export interface EventInput {
   visibility: "team" | "private"; participant_ids: number[]; ignore_conflicts?: boolean;
 }
 export interface Task {
+  /** TASK-12：人工阻塞原因（最新 blocker 之后无 unblock 时非空）。 */
+  waiting_reason?: string | null;
   dependency_ids?: number[]; blocked_by?: number[]; blocked?: boolean; dependency_warnings?: string[];
   id: number; team_id: number; title: string; description: string | null;
   assignee_id: number | null; assignee_name: string | null; created_by: number;
@@ -48,7 +52,7 @@ export interface Availability {
 }
 export interface Notice {
   id: number; type: string; title: string; body: string | null;
-  payload: { team_id?: number; event_id?: number; task_id?: number };
+  payload: { team_id?: number; event_id?: number; task_id?: number; announcement_id?: number };
   read_at: string | null; created_at: string;
 }
 const send = <T>(path: string, method: string, body?: unknown) =>
@@ -76,9 +80,14 @@ export const getEvent = (id: number) => request<CalendarEvent>(`/events/${id}`);
 export const createEvent = (id: number, data: EventInput) => send<CalendarEvent>(`/teams/${id}/events`, "POST", data);
 export const updateEvent = (id: number, data: Partial<Omit<EventInput, "participant_ids" | "recurrence">> & {status?: "cancelled"; scope?: EventScope}) => send<CalendarEvent>(`/events/${id}`, "PATCH", data);
 export const deleteEvent = (id: number, scope: EventScope = "this") => send<void>(`/events/${id}?scope=${scope}`, "DELETE");
-export const inviteParticipants = (id: number, user_ids: number[]) => send<Paginated<Participant>>(`/events/${id}/participants`, "POST", { user_ids });
+export const inviteParticipants = (id: number, user_ids: number[], note?: string) =>
+  send<Paginated<Participant>>(`/events/${id}/participants`, "POST", {
+    user_ids,
+    ...(note ? { note } : {}),
+  });
 export const removeParticipant = (id: number, uid: number) => send<void>(`/events/${id}/participants/${uid}`, "DELETE");
-export const respond = (id: number, response: Exclude<Rsvp, "pending">) => send<Participant>(`/events/${id}/rsvp`, "PATCH", { response });
+export const respond = (id: number, response: Exclude<Rsvp, "pending">, note?: string) =>
+  send<Participant>(`/events/${id}/rsvp`, "PATCH", note ? { response, note } : { response });
 export const getAvailability = (id: number, from: string, to: string, member?: number) => request<Availability>(`/teams/${id}/availability?${new URLSearchParams({from, to, ...(member ? {user_ids: String(member)} : {})})}`);
 export const listTasks = (id: number, filters: {status?: string; assignee_id?: string; mine?: string} = {}) => allPages<Task>(`/teams/${id}/tasks?${new URLSearchParams(filters)}`);
 export const createTask = (id: number, data: TaskInput) => send<Task>(`/teams/${id}/tasks`, "POST", data);
