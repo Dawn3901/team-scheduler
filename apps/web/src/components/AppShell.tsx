@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { logout } from "@teamsync/shared";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchInbox, logout } from "@teamsync/shared";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Avatar } from "./Avatar";
@@ -19,6 +19,8 @@ const pageLabels: Record<string, string> = {
   tutorial: "新手教程",
   about: "关于",
   me: "我的日程",
+  inbox: "收件箱",
+  announcements: "团队通告",
 };
 
 function pageLabel(pathname: string): string {
@@ -38,6 +40,12 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // 收件箱角标：离开页面后也要更新，因此轮询而非只在页面内取数。
+  const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 60000 });
+  // 收件箱接口失败或返回不完整时不能影响整个外壳渲染。
+  const inboxTotal = inbox.data?.total ?? 0;
+  const unackedAnnouncements = inbox.data?.counts?.announcements ?? 0;
+
   const match = location.pathname.match(/^\/app\/teams\/(\d+)/);
   const teamId = match ? Number(match[1]) : 0;
   const team = useTeam(teamId).data;
@@ -52,12 +60,14 @@ export function AppShell() {
     navigate("/login", { replace: true });
   };
 
-  const navItems: Array<{ to: string; label: string; icon: IconName; end?: boolean }> = teamId
+  const navItems: Array<{ to: string; label: string; icon: IconName; end?: boolean; badge?: number }> = teamId
     ? [
         { to: `/app/teams/${teamId}/calendar`, label: "团队日历", icon: "calendar" },
         { to: `/app/teams/${teamId}/tasks`, label: "任务看板", icon: "tasks" },
+        { to: `/app/teams/${teamId}/announcements`, label: "团队通告", icon: "bell", badge: unackedAnnouncements },
         { to: `/app/teams/${teamId}/members`, label: "团队成员", icon: "users" },
         { to: `/app/teams/${teamId}/settings`, label: "团队设置", icon: "settings" },
+        { to: "/app/inbox", label: "收件箱", icon: "inbox", badge: inboxTotal },
         { to: "/app/notifications", label: "通知中心", icon: "bell" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/me/calendar", label: "我的日程", icon: "user" },
@@ -66,6 +76,7 @@ export function AppShell() {
       ]
     : [
         { to: "/app", label: "我的团队", icon: "users", end: true },
+        { to: "/app/inbox", label: "收件箱", icon: "inbox", badge: inboxTotal },
         { to: "/app/notifications", label: "通知中心", icon: "bell" },
         { to: "/app/me/calendar", label: "我的日程", icon: "calendar" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
@@ -122,6 +133,7 @@ export function AppShell() {
             >
               <Icon name={item.icon} />
               <span>{item.label}</span>
+              {item.badge ? <span className="nav-badge" aria-label={`${item.badge} 条待处理`}>{item.badge}</span> : null}
             </NavLink>
           ))}
         </nav>

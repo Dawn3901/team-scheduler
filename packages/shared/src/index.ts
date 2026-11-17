@@ -8,3 +8,4 @@ export * from "./api/work";
 export * from "./dates";
 export * from "./realtime";
 export * from "./api/assistant";
+export * from "./api/messaging";

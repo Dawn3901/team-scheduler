@@ -16,6 +16,8 @@ import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import TutorialPage from "./pages/TutorialPage";
 import AboutPage from "./pages/AboutPage";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
+import InboxPage from "./pages/InboxPage";
 import PersonalCalendarPage from "./pages/PersonalCalendarPage";
 import TeamSelectPage from "./pages/TeamSelectPage";
 
@@ -30,6 +32,7 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route path="/app/notifications" element={<NotificationsPage />} />
+          <Route path="/app/inbox" element={<InboxPage />} />
           <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/tutorial" element={<TutorialPage />} />
           <Route path="/app/about" element={<AboutPage />} />
@@ -41,6 +44,7 @@ export default function App() {
             <Route path="calendar" element={<Suspense fallback={<p>日历加载中…</p>}><CalendarPage /></Suspense>} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="members" element={<MembersPage />} />
+            <Route path="announcements" element={<AnnouncementsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="events/:eventId" element={<EventPage />} />
           </Route>

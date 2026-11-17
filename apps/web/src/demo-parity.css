@@ -2200,3 +2200,151 @@ body {
 .personal-calendar-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .personal-calendar-legend span::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--legend); }
 .personal-task-list { display: grid; gap: 14px; margin-top: 8px; }
+
+/* ---------- CR-016：对象内讨论 / 通告 / 收件箱 ---------- */
+
+.thread {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.thread-compact { padding: 12px; border-radius: 12px; }
+
+.thread-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.thread-head h3 { margin: 0; font-size: 14px; }
+.thread-head .muted { font-size: 11px; }
+.thread-head .link-btn { margin-left: auto; }
+
+.thread-empty { margin: 0; font-size: 12px; }
+
+.thread-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.thread-item { display: flex; gap: 10px; align-items: flex-start; }
+
+.thread-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: #fff; font-size: 12px; font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.thread-body { min-width: 0; flex: 1; }
+.thread-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; flex-wrap: wrap; }
+.thread-meta strong { font-size: 12px; color: var(--ink); }
+.thread-text { margin: 4px 0 0; font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.thread-kind {
+  padding: 1px 6px; border-radius: 6px;
+  background: var(--surface-3); color: var(--muted); font-weight: 650;
+}
+.thread-blocker .thread-kind { background: var(--warn-soft); color: var(--warn); }
+.thread-unblock .thread-kind { background: var(--teal-soft); color: var(--teal); }
+.thread-requirement .thread-kind { background: var(--accent-soft); color: var(--accent-strong); }
+
+.thread-form { display: grid; gap: 8px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+.thread-form textarea {
+  width: 100%; resize: vertical; min-height: 56px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 12.5px;
+}
+.thread-kind-select select { font-size: 11.5px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.thread-mentions { display: flex; gap: 6px; flex-wrap: wrap; }
+.thread-actions { display: flex; justify-content: flex-end; }
+.thread-error { margin: 0; color: var(--danger); font-size: 11.5px; }
+
+.chip {
+  padding: 3px 8px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: var(--surface-2);
+  color: var(--muted); font-size: 11px; cursor: pointer;
+}
+.chip-on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+
+.announcement-card {
+  display: grid; gap: 6px;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface);
+}
+.announcement-card.pinned { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-soft); }
+.announcement-card.expired { opacity: 0.6; }
+.announcement-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.announcement-head h3 { margin: 0; font-size: 14px; }
+.announcement-body { margin: 0; font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.announcement-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.announcement-foot .btn { margin-left: auto; }
+.ack-progress { display: inline-flex; align-items: center; gap: 6px; }
+.ack-bar { width: 84px; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.ack-bar > span { display: block; height: 100%; background: var(--teal); }
+
+.inbox-item {
+  display: grid; gap: 4px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); text-align: left; cursor: pointer;
+}
+.inbox-item:hover { border-color: var(--accent); }
+.inbox-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.inbox-kind { padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-strong); font-size: 10px; font-weight: 650; }
+.inbox-preview { margin: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .thread { padding: 12px; border-radius: 12px; }
+  .thread-list { max-height: 320px; }
+  .thread-mentions { max-height: 74px; overflow-y: auto; }
+}
+
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.participant-note {
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11.5px;
+}
+
+.participant-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rsvp-block { display: grid; gap: 8px; margin: 10px 0; }
+.rsvp-block label { font-size: 11.5px; color: var(--muted); }
+.rsvp-block input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; font: inherit; font-size: 12.5px; }
+.event-messages { margin-top: 18px; }
+.announcement-list { display: grid; gap: 12px; }
+.announcement-manage { display: inline-flex; gap: 10px; margin-left: auto; }
+.inbox-list { display: grid; gap: 10px; }
+.inbox-item { font: inherit; }
+.receipt-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; max-height: 320px; overflow-y: auto; }
+.receipt-list li { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.receipt-list li .muted { margin-left: auto; font-size: 11px; }
+.receipt-list li.acked > span:nth-child(2) { color: var(--ink); font-weight: 600; }
+.note-form { margin: 10px 0; padding: 12px; border: 1px dashed var(--line-strong); border-radius: 12px; }
+.thread-dialog { max-height: 86vh; overflow-y: auto; }
+.inline-check { display: flex !important; align-items: center; gap: 8px; }

@@ -18,9 +18,15 @@ BUSINESS_TABLES = {
     "event_series",
     "task_dependencies",
     "personal_events",
+    "announcements",
+    "announcement_acks",
+    "messages",
+    "message_mentions",
+    "read_cursors",
 }
 
 AVATAR_COLUMNS = {"avatar_file", "avatar_updated_at"}
+MESSAGE_COLUMNS = {"note"}
 
 
 def _run_alembic(db_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -61,7 +67,7 @@ def test_upgrade_head_downgrade_and_upgrade_again(tmp_path: Path) -> None:
     assert {"idx_team_members_user", "idx_team_one_owner"} <= _indexes(db_path, "team_members")
     with sqlite3.connect(db_path) as connection:
         version = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert version == ("a71c4f0d2e93",)
+    assert version == ("c8f21d4b7a90",)
 
     drift = _run_alembic(db_path, "check")
     assert drift.returncode == 0, drift.stdout + drift.stderr
@@ -125,9 +131,36 @@ def test_avatar_migration_adds_columns_and_rolls_back(tmp_path: Path) -> None:
         columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
     assert AVATAR_COLUMNS <= columns
 
-    # 降级到上一个版本再升级：头像列可安全增删，不影响既有用户数据。
-    assert _run_alembic(db_path, "downgrade", "-1").returncode == 0
+    # 降级到个人日历版本（跨过后续迁移）再升级：头像列可安全增删。
+    assert _run_alembic(db_path, "downgrade", "6b4e82bbf137").returncode == 0
     with sqlite3.connect(db_path) as connection:
         columns = {row[1] for row in connection.execute("PRAGMA table_info(users)")}
     assert not (AVATAR_COLUMNS & columns)
+    assert _run_alembic(db_path, "upgrade", "head").returncode == 0
+
+
+def test_message_migration_adds_tables_and_note_column(tmp_path: Path) -> None:
+    db_path = tmp_path / "messages.db"
+    assert _run_alembic(db_path, "upgrade", "head").returncode == 0
+    with sqlite3.connect(db_path) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(event_participants)")}
+    assert MESSAGE_COLUMNS <= columns
+
+    # 降级到上一版本后表与列都应消失，再升级可恢复（头像迁移仍需保留）。
+    assert _run_alembic(db_path, "downgrade", "-1").returncode == 0
+    with sqlite3.connect(db_path) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+        }
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(event_participants)")}
+    message_tables = {
+        "announcements",
+        "announcement_acks",
+        "messages",
+        "message_mentions",
+        "read_cursors",
+    }
+    assert not (message_tables & tables)
+    assert not (MESSAGE_COLUMNS & columns)
     assert _run_alembic(db_path, "upgrade", "head").returncode == 0

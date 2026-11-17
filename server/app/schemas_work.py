@@ -43,10 +43,14 @@ class EventPatch(BaseModel):
 
 class InviteRequest(BaseModel):
     user_ids: list[int]
+    # NOTE-1：给本次被邀请者的备注（仅组织者/Admin 与本人可见），可空。
+    note: str | None = Field(default=None, max_length=500)
 
 
 class RsvpRequest(BaseModel):
     response: Literal["accepted", "declined", "tentative"]
+    # NOTE-1：回应时附言（写在自己那条参与者备注上），可空。
+    note: str | None = Field(default=None, max_length=500)
 
 
 class TaskCreate(BaseModel):

@@ -12,6 +12,7 @@ from app.db import get_db
 from app.deps import CurrentUser, MemberContext
 from app.errors import ApiError
 from app.models import Event, EventParticipant, Notification, Task, User, now_utc
+from app.schemas_message import ParticipantNote
 from app.schemas_work import (
     EventCreate,
     EventPatch,
@@ -103,7 +104,7 @@ def delete_event(
 @router.post("/events/{event_id}/participants")
 def invite(event_id: int, user: CurrentUser, db: Db, payload: InviteRequest):
     event, ctx = service.get_resource(db, Event, event_id, user)
-    return service.invite(db, event, ctx, user, payload.user_ids)
+    return service.invite(db, event, ctx, user, payload.user_ids, payload.note)
 
 
 @router.delete("/events/{event_id}/participants/{user_id}", status_code=204)
@@ -133,10 +134,31 @@ def remove_participant(event_id: int, user_id: int, user: CurrentUser, db: Db):
     return Response(status_code=204)
 
 
+@router.patch("/events/{event_id}/participants/{user_id}")
+def update_participant_note(
+    event_id: int, user_id: int, user: CurrentUser, db: Db, payload: ParticipantNote
+):
+    """NOTE-1：组织者/Admin 给某个参与者补一句要求，空串表示清空。"""
+    event, ctx = service.get_resource(db, Event, event_id, user)
+    service.can_edit(event, ctx, user.id)
+    person = db.scalar(
+        select(EventParticipant).where(
+            EventParticipant.event_id == event.id, EventParticipant.user_id == user_id
+        )
+    )
+    if person is None:
+        raise ApiError(404, "NOT_FOUND", "参与者不存在")
+    person.note = service.text_value(payload.note, 500) if payload.note else None
+    db.commit()
+    return service.participant_out(
+        db, person, viewer_id=user.id, can_manage=service.manages_event(event, db, user.id)
+    )
+
+
 @router.patch("/events/{event_id}/rsvp")
 def rsvp(event_id: int, user: CurrentUser, db: Db, payload: RsvpRequest):
     event, _ = service.get_resource(db, Event, event_id, user)
-    return service.rsvp(db, event, user, payload.response)
+    return service.rsvp(db, event, user, payload.response, payload.note)
 
 
 @router.get("/teams/{team_id}/availability")

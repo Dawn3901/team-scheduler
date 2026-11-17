@@ -166,6 +166,8 @@ class EventParticipant(Base):
     is_organizer: Mapped[bool] = mapped_column(default=False)
     invited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # CR-016 / NOTE-1：组织者对该成员的备注（或成员的回应附言），仅组织者/Admin 与本人可见。
+    note: Mapped[str | None] = mapped_column(Text)
 
 
 class Task(Base):
@@ -276,3 +278,101 @@ class TaskDependency(Base):
     depends_on_id: Mapped[int] = mapped_column(
         ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True
     )
+
+
+class Announcement(Base):
+    """CR-016 / ANNC-1：团队通告；created_at 即发布时刻。"""
+
+    __tablename__ = "announcements"
+    __table_args__ = (
+        CheckConstraint("pinned IN (0,1)", name="ck_announcements_pinned"),
+        CheckConstraint("requires_ack IN (0,1)", name="ck_announcements_requires_ack"),
+        Index("idx_announcements_team_created", "team_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    title: Mapped[str] = mapped_column(String)
+    body: Mapped[str] = mapped_column(Text)
+    pinned: Mapped[bool] = mapped_column(default=False, server_default=text("0"))
+    requires_ack: Mapped[bool] = mapped_column(default=True, server_default=text("1"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=now_utc, onupdate=now_utc
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AnnouncementAck(Base):
+    """ANNC-2：只有点“我知道了”才写一行，回执以此为唯一依据。"""
+
+    __tablename__ = "announcement_acks"
+    announcement_id: Mapped[int] = mapped_column(
+        ForeignKey("announcements.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    acked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+
+
+class Message(Base):
+    """MSG-1：对象内消息；可见性只继承对象（活动/任务/通告），kind 不影响可见性。"""
+
+    __tablename__ = "messages"
+    __table_args__ = (
+        CheckConstraint(
+            "target_type IN ('event','task','announcement')", name="ck_messages_target_type"
+        ),
+        CheckConstraint(
+            "kind IN ('comment','note','requirement','blocker',"
+            "'unblock','handoff','change_reason')",
+            name="ck_messages_kind",
+        ),
+        Index("idx_messages_target", "team_id", "target_type", "target_id", "id"),
+        Index("idx_messages_author", "author_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    target_type: Mapped[str] = mapped_column(String)
+    target_id: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String, default="comment")
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class MessageMention(Base):
+    """MSG-2：@ 提及，只允许团队活跃成员。"""
+
+    __tablename__ = "message_mentions"
+    __table_args__ = (Index("idx_message_mentions_user", "user_id"),)
+
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class ReadCursor(Base):
+    """MSG-3：对象级读位，收件箱与未读圆点的唯一来源。"""
+
+    __tablename__ = "read_cursors"
+    __table_args__ = (
+        CheckConstraint(
+            "target_type IN ('event','task','announcement')", name="ck_read_cursors_target_type"
+        ),
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    target_type: Mapped[str] = mapped_column(String, primary_key=True)
+    target_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)

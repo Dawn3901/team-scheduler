@@ -109,7 +109,16 @@ def can_edit(resource, ctx: TeamContext, user_id: int) -> None:
 # 同一活动/任务反复产生的同类通知：合并为一条，已读后再次变更才重新出现。
 # 提醒（event.reminder/task.due_soon/task.overdue）按时间桶去重，不参与合并。
 COALESCED_NOTIFICATIONS = frozenset(
-    {"event.invited", "event.updated", "event.cancelled", "task.assigned"}
+    {
+        "event.invited",
+        "event.updated",
+        "event.cancelled",
+        "task.assigned",
+        # CR-016：同一对象下的消息/通告只留一条未读。
+        "message.created",
+        "message.mentioned",
+        "announcement.published",
+    }
 )
 
 
@@ -200,17 +209,43 @@ def event_out(db: Session, event: Event, user_id: int) -> dict:
         "updated_at": timestamp(event.updated_at),
         "my_needs_confirmation": any(p.user_id == user_id and p.needs_confirmation for p in people),
         "my_response": next((p.response for p in people if p.user_id == user_id), None),
-        "participants": [participant_out(db, p) for p in people],
+        "participants": [
+            participant_out(db, p, viewer_id=user_id, can_manage=manages_event(event, db, user_id))
+            for p in people
+        ],
     }
 
 
-def participant_out(db: Session, p: EventParticipant) -> dict:
+def manages_event(event: Event, db: Session, user_id: int) -> bool:
+    """组织者或团队 Owner/Admin 可看全部参与者备注。"""
+    if event.created_by == user_id:
+        return True
+    role = db.scalar(
+        select(TeamMember.role).where(
+            TeamMember.team_id == event.team_id,
+            TeamMember.user_id == user_id,
+            TeamMember.status == "active",
+        )
+    )
+    return role in ("owner", "admin")
+
+
+def participant_out(
+    db: Session,
+    p: EventParticipant,
+    *,
+    viewer_id: int | None = None,
+    can_manage: bool = False,
+) -> dict:
+    """NOTE-1：备注是字段级可见性——只有组织者/Admin 与本人能看到，其他人一律 null。"""
+    visible = can_manage or (viewer_id is not None and viewer_id == p.user_id)
     return {
         "user_id": p.user_id,
         "display_name": db.get(User, p.user_id).display_name,
         "response": p.response,
         "is_organizer": p.is_organizer,
         "needs_confirmation": p.needs_confirmation,
+        "note": p.note if visible else None,
     }
 
 
@@ -424,10 +459,18 @@ def ensure_open(event: Event) -> None:
         raise ApiError(409, "EVENT_ENDED", "活动已结束")
 
 
-def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[int]) -> dict:
+def invite(
+    db: Session,
+    event: Event,
+    ctx: TeamContext,
+    user: User,
+    ids: list[int],
+    note: str | None = None,
+) -> dict:
     can_edit(event, ctx, user.id)
     ensure_open(event)
     validate_ids(db, event.team_id, set(ids), "INVALID_PARTICIPANT")
+    clean_note = text_value(note, 500) if note is not None else None
     for uid in set(ids):
         old = db.scalar(
             select(EventParticipant).where(
@@ -435,6 +478,8 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
             )
         )
         if old is not None:
+            if note is not None:
+                old.note = clean_note
             if old.response == "declined" and old.responded_at is None:
                 old.response, old.invited_at = "pending", now_utc()
                 old.needs_confirmation = False
@@ -455,6 +500,7 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
                 user_id=uid,
                 response="pending",
                 is_organizer=False,
+                note=clean_note,
                 invited_at=now_utc(),
             )
             .on_conflict_do_nothing(index_elements=["event_id", "user_id"])
@@ -469,26 +515,35 @@ def invite(db: Session, event: Event, ctx: TeamContext, user: User, ids: list[in
             key=coalesce_key("event.invited", event.id, uid),
         )
     db.commit()
-    items = [participant_out(db, p) for p in participants(db, event.id)]
+    can_manage = manages_event(event, db, user.id)
+    items = [
+        participant_out(db, p, viewer_id=user.id, can_manage=can_manage)
+        for p in participants(db, event.id)
+    ]
     return {"items": items, "total": len(items)}
 
 
 @serialized_write
-def rsvp(db: Session, event: Event, user: User, response: str) -> dict:
+def rsvp(
+    db: Session, event: Event, user: User, response: str, note: str | None = None
+) -> dict:
     ensure_open(event)
     p = next((p for p in participants(db, event.id) if p.user_id == user.id), None)
     if p is None or (p.response == "declined" and p.responded_at is None):
         raise ApiError(403, "FORBIDDEN", "只有当前受邀参与者可以回应")
     if p.is_organizer and response != "accepted":
         raise ApiError(422, "ORGANIZER_CANNOT_DECLINE", "组织者请取消活动")
+    if note is not None:
+        p.note = text_value(note, 500)
     p.response, p.responded_at = response, now_utc()
     p.needs_confirmation = False
     db.commit()
-    return participant_out(db, p)
+    return participant_out(db, p, viewer_id=user.id, can_manage=p.is_organizer)
 
 
 def task_out(db: Session, task: Task) -> dict:
     from app.services.dependencies import summary
+    from app.services.messages import waiting_reason
 
     assignee = db.get(User, task.assignee_id) if task.assignee_id else None
     return {
@@ -505,6 +560,8 @@ def task_out(db: Session, task: Task) -> dict:
         "overdue": utc(task.due_at) < now_utc() and task.status != "done",
         "created_by": task.created_by,
         "completed_at": timestamp(task.completed_at),
+        # TASK-12：人工阻塞的派生字段；与依赖 blocked 分开存储，前端合并展示。
+        "waiting_reason": waiting_reason(db, task.id),
         "updated_at": timestamp(task.updated_at),
     }
 

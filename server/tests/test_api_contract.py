@@ -71,6 +71,21 @@ FROZEN_OPERATIONS: frozenset[tuple[str, str]] = frozenset(
         # CR-015 / AUTH-8：上传与删除自己的头像（读取接口带版本号路径，不进入冻结表）。
         ("POST", "/api/v1/auth/me/avatar"),
         ("DELETE", "/api/v1/auth/me/avatar"),
+        # CR-016：团队沟通（通告 / 对象内消息 / 读位 / 收件箱）。
+        ("GET", "/api/v1/teams/{team_id}/announcements"),
+        ("POST", "/api/v1/teams/{team_id}/announcements"),
+        ("GET", "/api/v1/announcements/{announcement_id}"),
+        ("PATCH", "/api/v1/announcements/{announcement_id}"),
+        ("DELETE", "/api/v1/announcements/{announcement_id}"),
+        ("POST", "/api/v1/announcements/{announcement_id}/ack"),
+        ("GET", "/api/v1/announcements/{announcement_id}/receipts"),
+        ("GET", "/api/v1/events/{event_id}/messages"),
+        ("POST", "/api/v1/events/{event_id}/messages"),
+        ("GET", "/api/v1/tasks/{task_id}/messages"),
+        ("POST", "/api/v1/tasks/{task_id}/messages"),
+        ("PATCH", "/api/v1/events/{event_id}/participants/{user_id}"),
+        ("POST", "/api/v1/read-marks"),
+        ("GET", "/api/v1/inbox"),
     }
 )
 
@@ -110,6 +125,8 @@ FROZEN_ERROR_CODES = frozenset(FROZEN_HTTP_ERROR_CODES.values()) | {
     # CR-015 / AUTH-8：头像格式不支持（415）与超过 2 MB（413）。
     "INVALID_AVATAR",
     "AVATAR_TOO_LARGE",
+    # CR-016：@ 了非活跃成员或非本团队用户。
+    "INVALID_MENTION",
 }
 
 # 由 validate_ids 以变量形式抛出的两个业务码。
@@ -192,7 +209,7 @@ def test_frozen_operation_set_matches_openapi() -> None:
         if method.upper() in {"GET", "POST", "PATCH", "DELETE"}
     }
     assert actual == set(FROZEN_OPERATIONS)
-    assert len(actual) == 45
+    assert len(actual) == 59
 
 
 def test_documented_endpoint_table_matches_frozen_contract() -> None:
