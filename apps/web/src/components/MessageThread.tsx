@@ -199,7 +199,13 @@ export function MessageThread({
           )}
           {error && <p className="thread-error" role="alert">{error}</p>}
           <div className="thread-actions">
-            <button type="submit" className="btn btn-primary btn-sm" disabled={send.isPending || !body.trim()}>
+            {/* 活动页同时有 AI 助手的“发送”，用 aria-label 区分，避免读屏与测试歧义。 */}
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              aria-label={`发送到${title}`}
+              disabled={send.isPending || !body.trim()}
+            >
               {send.isPending ? "发送中…" : "发送"}
             </button>
           </div>

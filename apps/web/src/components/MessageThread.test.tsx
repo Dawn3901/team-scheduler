@@ -66,7 +66,7 @@ describe("对象内讨论（CR-016）", () => {
     await screen.findByText("地点定在 3F");
     await user.click(screen.getByRole("button", { name: "@陈" }));
     fireEvent.change(screen.getByLabelText("讨论内容"), { target: { value: "看下这个" } });
-    await user.click(screen.getByRole("button", { name: "发送" }));
+    await user.click(screen.getByRole("button", { name: "发送到讨论" }));
 
     await waitFor(() => {
       const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");

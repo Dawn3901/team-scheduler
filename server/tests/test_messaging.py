@@ -319,6 +319,8 @@ def test_read_mark_clears_inbox_and_mention_disappears_when_hidden(client, actor
     )
     inbox = client.get("/api/v1/inbox", headers=headers(member)).json()
     assert inbox["counts"]["mentions"] == 1
+    # @ 与“我负责对象的新消息”指向同一对象时只出现一条，避免收件箱重复。
+    assert inbox["counts"]["messages"] == 0
 
     assert (
         client.post(

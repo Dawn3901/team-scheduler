@@ -238,7 +238,13 @@ def inbox(db: Session, user: User) -> dict:
     now = now_utc()
     announcements = unacked_announcements(db, user, now)
     mentions = mention_items(db, user)
-    owned = owned_object_items(db, user)
+    # @ 已经覆盖的对象不再重复出现在“新消息”里：同一件事只出现一次。
+    mentioned_targets = {(item["target_type"], item["target_id"]) for item in mentions}
+    owned = [
+        item
+        for item in owned_object_items(db, user)
+        if (item["target_type"], item["target_id"]) not in mentioned_targets
+    ]
     items = sorted(
         [*announcements, *mentions, *owned],
         key=lambda item: item["created_at"] or "",
