@@ -2397,3 +2397,29 @@ body {
 .notice-toolbar-actions .btn { padding: 6px 12px; font-size: 12px; }
 .notice-pager { justify-content: flex-end; align-items: center; gap: 8px; }
 .notice-pager .btn { padding: 6px 12px; font-size: 12px; }
+
+/* 活动详情：顶部操作与参与者行内回应（CR-016 第四轮） */
+.event-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.event-scope select { font-size: 11.5px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); }
+.participant-main { display: grid; gap: 2px; min-width: 0; }
+.participant-name { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.participant-name small { font-size: 11px; }
+.participant-side { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.rsvp-actions { display: flex; gap: 6px; }
+.rsvp-actions .btn { padding: 5px 12px; font-size: 12px; }
+.rsvp-chip {
+  padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 650;
+  border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--muted);
+}
+.rsvp-chip.accepted { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.rsvp-chip.tentative { border-color: #d97706; background: #fef3c7; color: #b45309; }
+.rsvp-chip.declined { border-color: var(--danger); background: #fee2e2; color: var(--danger); }
+.rsvp-chip.pending { border-style: dashed; }
+.rsvp-remove { color: var(--danger); font-size: 16px; line-height: 1; padding: 2px 6px; }
+.rsvp-remove:hover { background: #fee2e2; }
+.rsvp-note-field { display: grid; gap: 6px; margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+.rsvp-note-field input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px;
+  font: inherit; font-size: 12.5px;
+}
+.participant-row.is-me { border-color: var(--accent); }

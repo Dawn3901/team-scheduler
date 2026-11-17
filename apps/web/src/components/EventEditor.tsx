@@ -75,8 +75,8 @@ export default function EventEditor({teamId, timezone, members, current, initial
             await updateEvent(current.id, {...changes, scope:String(f.get("scope") || "this") as EventScope});
             const added = participant_ids.filter(uid => !current.participants.some(p => p.user_id === uid));
             const note = noteText.trim();
-            // 备注落在“本次新增的邀请”上；同时留一条讨论，方便无法访问备注的人看到公开说明。
-            if(added.length) await inviteParticipants(current.id, added, note || undefined);
+            // 不再写“参与者备注”：私密要求统一走讨论 @，避免同一句话有两个可见范围。
+            if(added.length) await inviteParticipants(current.id, added);
             if(note) await createEventMessage(current.id, {
               kind: "note",
               body: note,
@@ -116,7 +116,7 @@ export default function EventEditor({teamId, timezone, members, current, initial
       {current && <label>变更原因（可选，会写进活动讨论并通知参与者）<input name="reason" maxLength={500} placeholder="例如：场地被占用" /></label>}
       <label>可见性<select name="visibility" defaultValue={current?.visibility || "team"}><option value="team">团队可见</option><option value="private">私密（仅组织者和参与者）</option></select></label>
       <div className="work-note-field">
-        <span className="work-note-label">给参与者的说明 / @ 提醒（可选）</span>
+        <span className="work-note-label">留言（写入活动讨论，可 @ 成员）</span>
         <MentionTextarea
           value={noteText}
           onChange={setNoteText}
@@ -126,10 +126,10 @@ export default function EventEditor({teamId, timezone, members, current, initial
           currentUserId={currentUserId}
           rows={2}
           maxLength={500}
-          ariaLabel="给参与者的说明"
+          ariaLabel="留言"
           placeholder="例如：记得带电脑；输入 @ 可以直接提醒某位成员"
         />
-        <p className="muted">新邀请的人会看到这句话（仅组织者/管理员与本人可见）；@ 到的成员会收到提及通知。</p>
+        <p className="muted">会作为一条讨论留在活动里；@ 到的成员会收到提及通知。</p>
       </div>
       <fieldset><legend>邀请成员</legend>
         <div className="participant-tools"><button type="button" className="btn btn-ghost" disabled={toggleable.length === 0} onClick={toggleAll}>{allSelected ? "取消邀请全员" : "邀请全员"}</button></div>

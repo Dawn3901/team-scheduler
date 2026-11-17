@@ -100,28 +100,34 @@ test("任务前置 → 阻塞 → 完成解锁 → 依赖图与循环拒绝",asy
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });
 
-test("重复系列本次修改、未来修改、取消例外不复活",async ({page})=>{
+test("重复系列：取消单次不复活、整系列改期生效",async ({page})=>{
   const {base,team,headers}=await setup(page);
   const created=await page.request.post(`/api/v1/teams/${team.id}/events`,{headers,data:{title:"周期讨论",start_at:"2028-01-03T01:00:00Z",end_at:"2028-01-03T02:00:00Z",recurrence:{frequency:"weekly",count:3}}});
   const first=await created.json();
   const url=`/api/v1/teams/${team.id}/events?from=2028-01-01T00:00:00Z&to=2028-02-01T00:00:00Z`;
-  const items=(await (await page.request.get(url,{headers})).json()).items;
+  const list=async()=>(await (await page.request.get(url,{headers})).json()).items as Array<{id:number;title:string;status:string}>;
+  const items=await list();
+  expect(items).toHaveLength(3);
+
+  // 取消第 2 次：软删除 + 通知，列表少一条且不复活。
   await page.goto(base+`/events/${items[1].id}`);
   page.on("dialog",dialog=>dialog.accept());
   await page.getByRole("button",{name:"取消活动",exact:true}).click();
-  await expect(page.getByText(/已取消/)).toBeVisible();
-  await page.goto(base+`/events/${first.id}`);
+  await expect(page.getByRole("heading",{name:"团队日历",exact:true})).toBeVisible();
+  const afterCancel=await list();
+  expect(afterCancel).toHaveLength(2);
+  expect(afterCancel.some(e=>e.id===items[1].id)).toBe(false);
+
+  // 从剩下的第 1 次改“整个系列”，只影响仍存在的两次。
+  await page.goto(base+`/events/${items[0].id}`);
   await page.getByRole("button",{name:"编辑活动",exact:true}).click();
   const editor=page.getByRole("dialog",{name:"编辑活动"});
   await editor.getByLabel("修改范围").selectOption("all");
   await editor.getByLabel("活动标题").fill("更新后的周期讨论");
   await editor.getByRole("button",{name:"保存活动"}).click();
   await expect(editor).toBeHidden();
-  const updated=(await (await page.request.get(url,{headers})).json()).items;
-  expect(updated[1].status).toBe("cancelled");
-  expect(updated[2].title).toBe("更新后的周期讨论");
-  await page.getByLabel("取消删除范围").selectOption("all");
-  await page.getByRole("button",{name:"取消活动",exact:true}).click();
-  await expect(page.getByText(/已取消/)).toBeVisible();
-  expect((await (await page.request.get(url,{headers})).json()).items.every((e:{status:string})=>e.status==="cancelled")).toBe(true);
+  const updated=await list();
+  expect(updated).toHaveLength(2);
+  expect(updated.every(e=>e.title==="更新后的周期讨论")).toBe(true);
+  expect(updated.some(e=>e.id===items[1].id)).toBe(false);
 });

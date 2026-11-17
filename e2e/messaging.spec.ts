@@ -96,11 +96,11 @@ test("通告：Admin 发布，成员点我知道了，作者看到回执进度",
   await member.close();
 });
 
-test("参与者备注：组织者与本人可见，第三人看不到", async ({ browser }) => {
+test("参与者附言：组织者与本人可见，第三人看不到", async ({ browser }) => {
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const owner = await browser.newPage();
   await register(owner, `note_owner_${suffix}`, "组长");
-  const teamId = await createTeam(owner, `备注队 ${suffix}`);
+  const teamId = await createTeam(owner, `附言队 ${suffix}`);
   const code = await inviteCode(owner);
 
   const member = await browser.newPage();
@@ -122,22 +122,26 @@ test("参与者备注：组织者与本人可见，第三人看不到", async ({
       ignore_conflicts: true,
     },
   });
-  await api(owner, `/events/${event.id}/participants/${guestId}`, {
-    method: "PATCH",
-    body: { note: "记得带电脑，提前 15 分钟到" },
-  });
 
-  // 组织者与本人看到备注；第三人（同团队成员但非参与者）看不到。
-  await owner.goto(`/app/teams/${teamId}/events/${event.id}`);
-  await expect(owner.getByText("备注：记得带电脑，提前 15 分钟到")).toBeVisible();
+  // 现在附言只能由参与者自己在回应时写；组织者不再有“加备注”。
   await member.goto(`/app/teams/${teamId}/events/${event.id}`);
-  await expect(member.getByText("备注：记得带电脑，提前 15 分钟到")).toBeVisible();
+  await member.getByLabel("回应附言").fill("我会迟到 10 分钟");
+  await member.getByRole("button", { name: "接受", exact: true }).click();
+  await expect(member.getByText("附言：我会迟到 10 分钟")).toBeVisible();
 
+  await owner.goto(`/app/teams/${teamId}/events/${event.id}`);
+  await expect(owner.getByText("附言：我会迟到 10 分钟")).toBeVisible();
+  await expect(owner.getByRole("button", { name: /加备注|改备注/ })).toHaveCount(0);
+
+  // 第三人（同团队成员但非参与者）拿到的备注恒为 null，页面上也没有这句话。
   const thirdView = await api<{ participants: Array<{ user_id: number; note: string | null }> }>(
     third,
     `/events/${event.id}`,
   );
   expect(thirdView.participants.every(p => p.note === null)).toBe(true);
+  await third.goto(`/app/teams/${teamId}/events/${event.id}`);
+  await expect(third.getByText(/我会迟到 10 分钟/)).toHaveCount(0);
+
   await owner.close();
   await member.close();
   await third.close();
@@ -252,7 +256,7 @@ test("新建活动时输入 @ 可提醒成员，且说明写进活动讨论", as
   await owner.getByRole("button", { name: "新建活动" }).first().click();
   const dialog = owner.getByRole("dialog", { name: "新建活动" });
   await dialog.getByLabel("活动标题").fill("周五评审");
-  const note = dialog.getByLabel("给参与者的说明");
+  const note = dialog.getByLabel("留言");
   await note.click();
   await note.pressSequentially("@组");
   const menu = owner.getByRole("listbox", { name: "选择要 @ 的成员" });
@@ -272,6 +276,58 @@ test("新建活动时输入 @ 可提醒成员，且说明写进活动讨论", as
 
   await member.goto("/app/inbox");
   await expect(member.getByText(/记得带电脑/)).toBeVisible();
+
+  await owner.close();
+  await member.close();
+});
+
+test("参与者行内回应与取消活动：取消后活动从日历消失", async ({ browser }) => {
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const owner = await browser.newPage();
+  await register(owner, `row_owner_${suffix}`, "组长");
+  const teamId = await createTeam(owner, `行内队 ${suffix}`);
+  const code = await inviteCode(owner);
+
+  const member = await browser.newPage();
+  await register(member, `row_member_${suffix}`, "组员戊");
+  await joinTeam(member, code);
+  const guestId = await meId(member);
+
+  const start = new Date(Date.now() + 2 * 24 * 3600 * 1000);
+  const event = await api<{ id: number }>(owner, `/teams/${teamId}/events`, {
+    method: "POST",
+    body: {
+      title: "行内回应演练",
+      start_at: start.toISOString(),
+      end_at: new Date(start.getTime() + 3600_000).toISOString(),
+      participant_ids: [guestId],
+      ignore_conflicts: true,
+    },
+  });
+
+  // 我的行：三个按钮，点“待定”后只有它高亮。
+  await member.goto(`/app/teams/${teamId}/events/${event.id}`);
+  const mine = member.locator(".participant-row.is-me");
+  await expect(mine).toContainText("组员戊");
+  await expect(mine.getByRole("button", { name: "接受" })).toHaveAttribute("aria-pressed", "false");
+  await member.locator(".participant-row.is-me").getByRole("button", { name: "待定" }).click();
+  await expect(mine.getByRole("button", { name: "待定" })).toHaveAttribute("aria-pressed", "true");
+  await expect(mine.getByRole("button", { name: "接受" })).toHaveAttribute("aria-pressed", "false");
+
+  // 组织者看到的状态是标签而不是可点的按钮，并且有红色 × 移除邀请。
+  await owner.goto(`/app/teams/${teamId}/events/${event.id}`);
+  const guestRow = owner.locator(".participant-row").filter({ hasText: "组员戊" });
+  await expect(guestRow.locator(".rsvp-chip.tentative")).toHaveText("待定");
+  await expect(guestRow.getByRole("button", { name: "待定" })).toHaveCount(0);
+  await expect(guestRow.getByRole("button", { name: /移除 组员戊 的邀请/ })).toBeVisible();
+
+  // 取消活动：确认后回到日历，活动不再显示。
+  owner.on("dialog", dialog => dialog.accept());
+  await owner.getByRole("button", { name: "取消活动", exact: true }).click();
+  await expect(owner.getByRole("heading", { name: "团队日历", exact: true })).toBeVisible();
+  await expect(
+    owner.locator(".rbc-event, .timeline-event, .timeline-allday button").filter({ hasText: "行内回应演练" }),
+  ).toHaveCount(0);
 
   await owner.close();
   await member.close();
