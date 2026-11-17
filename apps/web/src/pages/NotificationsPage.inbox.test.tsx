@@ -37,7 +37,7 @@ afterEach(async () => {
   localStorage.clear();
 });
 
-describe("收件箱（CR-016 / MSG-3）", () => {
+describe("通知 · 待处理（合并后的收件箱，CR-016 / MSG-3）", () => {
   it("展示三类计数与条目，打开时推进读位并跳到任务", async () => {
     const fetchMock = mockFetch((url, init) => {
       if (url === "/api/v1/auth/me") return jsonResponse(USER);
@@ -56,15 +56,18 @@ describe("收件箱（CR-016 / MSG-3）", () => {
     });
     const user = userEvent.setup();
 
+    // 旧链接仍可用（重定向到通知页的待处理标签）。
     renderApp(["/app/inbox"]);
 
-    expect(await screen.findByRole("heading", { name: "收件箱" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "通知" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /待处理/ })).toHaveAttribute("aria-selected", "true");
     // 标题是静态的，条目要等 /inbox 返回。
     // 消息正文是主信息，活动/任务标题退到副标题。
     expect(await screen.findByText("@林 帮忙看下格式")).toBeInTheDocument();
     expect(screen.getByText("在「写文档」中")).toBeInTheDocument();
     expect(screen.getByText("@我")).toBeInTheDocument();
     expect(screen.getByText(/1 条待确认通告/)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /待处理（1）/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /帮忙看下格式/ }));
 
@@ -84,8 +87,9 @@ describe("收件箱（CR-016 / MSG-3）", () => {
       return jsonResponse({ items: [], total: 0 });
     });
 
+    // 旧链接仍可用（重定向到通知页的待处理标签）。
     renderApp(["/app/inbox"]);
 
-    expect(await screen.findByText(/收件箱是空的/)).toBeInTheDocument();
+    expect(await screen.findByText(/没有待处理的事/)).toBeInTheDocument();
   });
 });

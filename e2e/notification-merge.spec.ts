@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * CR-015：同一活动反复改期，通知中心只保留一条“活动变更”，不随次数堆叠。
+ * CR-015：同一活动反复改期，通知只保留一条“活动变更”，不随次数堆叠。
+ * CR-016 后入口合并为「通知」页的“全部动态”标签。
  * 走真实后端：创建 → 邀请 → 被邀请人接受 → 连续改期 3 次。
  */
 async function register(page: Page, name: string): Promise<void> {
@@ -94,8 +95,8 @@ test("同一活动连续改期后，通知中心合并为一条并可展开历�
     }, { eventId });
   }
 
-  await guest.locator(".app-sidebar").getByRole("link", { name: "通知中心" }).click();
-  await expect(guest.getByRole("heading", { name: "通知中心" })).toBeVisible();
+  await guest.locator(".app-sidebar").getByRole("link", { name: "通知" }).click();
+  await expect(guest.getByRole("heading", { name: "通知", exact: true })).toBeVisible();
 
   const groups = guest.getByTestId("notice-group");
   // 邀请 1 组 + 活动变更 1 组：改期 3 次也只留一条，不再按次数堆叠。

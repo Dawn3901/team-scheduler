@@ -14,12 +14,12 @@ const pageLabels: Record<string, string> = {
   tasks: "任务看板",
   members: "团队成员",
   settings: "团队设置",
-  notifications: "通知中心",
+  notifications: "通知",
   profile: "个人资料",
   tutorial: "新手教程",
   about: "关于",
   me: "我的日程",
-  inbox: "收件箱",
+  inbox: "通知",
   announcements: "团队通告",
 };
 
@@ -40,9 +40,9 @@ export function AppShell() {
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 收件箱角标：离开页面后也要更新，因此轮询而非只在页面内取数。
+  // 通知角标 = 待处理数（合并收件箱后唯一来源）：离开页面也要更新，因此轮询。
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 60000 });
-  // 收件箱接口失败或返回不完整时不能影响整个外壳渲染。
+  // 接口失败或返回不完整时不能影响整个外壳渲染。
   const inboxTotal = inbox.data?.total ?? 0;
   const unackedAnnouncements = inbox.data?.counts?.announcements ?? 0;
 
@@ -67,8 +67,7 @@ export function AppShell() {
         { to: `/app/teams/${teamId}/announcements`, label: "团队通告", icon: "bell", badge: unackedAnnouncements },
         { to: `/app/teams/${teamId}/members`, label: "团队成员", icon: "users" },
         { to: `/app/teams/${teamId}/settings`, label: "团队设置", icon: "settings" },
-        { to: "/app/inbox", label: "收件箱", icon: "inbox", badge: inboxTotal },
-        { to: "/app/notifications", label: "通知中心", icon: "bell" },
+        { to: "/app/notifications", label: "通知", icon: "bell", badge: inboxTotal },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/me/calendar", label: "我的日程", icon: "user" },
         { to: "/app/tutorial", label: "新手教程", icon: "help" },
@@ -76,8 +75,7 @@ export function AppShell() {
       ]
     : [
         { to: "/app", label: "我的团队", icon: "users", end: true },
-        { to: "/app/inbox", label: "收件箱", icon: "inbox", badge: inboxTotal },
-        { to: "/app/notifications", label: "通知中心", icon: "bell" },
+        { to: "/app/notifications", label: "通知", icon: "bell", badge: inboxTotal },
         { to: "/app/me/calendar", label: "我的日程", icon: "calendar" },
         { to: "/app/profile", label: "个人资料", icon: "user" },
         { to: "/app/tutorial", label: "新手教程", icon: "help" },

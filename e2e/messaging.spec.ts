@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * CR-016：团队沟通一期。
  * 覆盖：通告发布 → 成员确认 → 作者看回执；活动邀请备注（组织者/本人可见，第三人不可见）；
- * 任务受阻 → 解除；收件箱 @ 提醒与读位。
+ * 任务受阻 → 解除；通知页“待处理”的 @ 提醒与读位（原收件箱，已合并）。
  */
 async function register(page: Page, username: string, displayName: string): Promise<void> {
   await page.goto("/register");
@@ -164,7 +164,7 @@ test("任务受阻：标记原因 → 卡片显示 → 解除后收起", async (
   await expect(page.getByText("受阻：等设计稿确认")).toHaveCount(0);
 });
 
-test("收件箱：被 @ 后出现提醒，打开后清零", async ({ browser }) => {
+test("通知 · 待处理：被 @ 后出现提醒，打开后清零", async ({ browser }) => {
   const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const owner = await browser.newPage();
   await register(owner, `inbox_owner_${suffix}`, "组长");
@@ -196,7 +196,7 @@ test("收件箱：被 @ 后出现提醒，打开后清零", async ({ browser }) 
   await member.getByRole("button", { name: /核对日程/ }).click();
   await expect(member.getByRole("heading", { name: "任务看板" })).toBeVisible();
   await member.goto("/app/inbox");
-  await expect(member.getByText(/收件箱是空的/)).toBeVisible();
+  await expect(member.getByText(/没有待处理的事/)).toBeVisible();
   await owner.close();
   await member.close();
 });

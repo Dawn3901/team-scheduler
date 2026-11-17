@@ -52,7 +52,7 @@ export interface Availability {
 }
 export interface Notice {
   id: number; type: string; title: string; body: string | null;
-  payload: { team_id?: number; event_id?: number; task_id?: number };
+  payload: { team_id?: number; event_id?: number; task_id?: number; announcement_id?: number };
   read_at: string | null; created_at: string;
 }
 const send = <T>(path: string, method: string, body?: unknown) =>

@@ -17,7 +17,6 @@ import ProfilePage from "./pages/ProfilePage";
 import TutorialPage from "./pages/TutorialPage";
 import AboutPage from "./pages/AboutPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
-import InboxPage from "./pages/InboxPage";
 import PersonalCalendarPage from "./pages/PersonalCalendarPage";
 import TeamSelectPage from "./pages/TeamSelectPage";
 
@@ -32,7 +31,8 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route path="/app/notifications" element={<NotificationsPage />} />
-          <Route path="/app/inbox" element={<InboxPage />} />
+          {/* 合并后保留旧链接：/app/inbox 直接落在“待处理”标签。 */}
+          <Route path="/app/inbox" element={<Navigate to="/app/notifications?tab=pending" replace />} />
           <Route path="/app/profile" element={<ProfilePage />} />
           <Route path="/app/tutorial" element={<TutorialPage />} />
           <Route path="/app/about" element={<AboutPage />} />

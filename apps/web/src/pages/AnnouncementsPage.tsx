@@ -66,7 +66,7 @@ export default function AnnouncementsPage() {
           </p>
         </div>
         <div className="panel-actions">
-          <Link className="btn btn-secondary" to="/app/inbox">收件箱</Link>
+          <Link className="btn btn-secondary" to="/app/notifications">通知</Link>
           {canManage && <button className="btn btn-primary" onClick={() => { setEditing(null); setComposing(true); }}>发布通告</button>}
         </div>
       </div>
