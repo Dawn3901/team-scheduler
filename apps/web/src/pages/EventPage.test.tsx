@@ -95,9 +95,12 @@ describe("活动详情：参与者行内回应（CR-016）", () => {
     for (const label of ["接受", "待定", "拒绝"]) {
       expect(within(mine).getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
     }
-    // 组织者自己那行不给按钮。
+    // 组织者自己那行不给按钮，右侧只标“组织者”，姓名后不再挂小字。
     const ownerRow = document.querySelectorAll(".participant-row")[0] as HTMLElement;
     expect(within(ownerRow).queryByRole("button", { name: "拒绝" })).not.toBeInTheDocument();
+    expect(within(ownerRow).getByText("组织者")).toBeInTheDocument();
+    expect(within(ownerRow).queryByText("我")).not.toBeInTheDocument();
+    expect(within(mine).queryByText("我")).not.toBeInTheDocument();
   });
 
   it("已接受时只有“接受”高亮，点击“待定”调用 rsvp 接口", async () => {
@@ -149,6 +152,10 @@ describe("活动详情：参与者行内回应（CR-016）", () => {
     expect(screen.getByText("待回应")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /移除 组员 的邀请/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /加备注|改备注/ })).not.toBeInTheDocument();
+    // 组织者行右侧是“组织者”而不是“接受”。
+    const ownerRow = document.querySelectorAll(".participant-row")[0] as HTMLElement;
+    expect(within(ownerRow).getByText("组织者")).toBeInTheDocument();
+    expect(within(ownerRow).queryByText("接受")).not.toBeInTheDocument();
     // 编辑权限下才有取消活动，且没有“删除活动”。
     expect(screen.getByRole("button", { name: "取消活动" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "删除活动" })).not.toBeInTheDocument();

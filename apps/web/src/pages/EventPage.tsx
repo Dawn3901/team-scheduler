@@ -64,11 +64,7 @@ export default function EventPage() {
     return (
       <div className={`work-row participant-row${isMe ? " is-me" : ""}`} key={p.user_id}>
         <div className="participant-main">
-          <span className="participant-name">
-            {p.display_name}
-            {p.is_organizer ? <small className="muted">组织者</small> : null}
-            {isMe && !p.is_organizer ? <small className="muted">我</small> : null}
-          </span>
+          <span className="participant-name">{p.display_name}</span>
           {p.note ? <p className="participant-note">附言：{p.note}</p> : null}
         </div>
         <div className="participant-side">
@@ -93,6 +89,9 @@ export default function EventPage() {
                 );
               })}
             </div>
+          ) : p.is_organizer ? (
+            // 组织者一定参加，显示“接受”没有信息量，直接标身份（“我”由整行高亮体现）。
+            <span className="rsvp-chip organizer">组织者</span>
           ) : (
             <ResponseChip response={p.response} needsConfirmation={p.needs_confirmation} />
           )}
@@ -133,7 +132,7 @@ export default function EventPage() {
             </label>
           ) : null}
           {event.status === "confirmed" && <button className="btn btn-secondary" onClick={() => setEditing(true)}>编辑活动</button>}
-          {event.status === "confirmed" && <button className="btn btn-ghost" disabled={action.pending} onClick={cancelEvent}>取消活动</button>}
+          {event.status === "confirmed" && <button className="btn btn-secondary" disabled={action.pending} onClick={cancelEvent}>取消活动</button>}
         </div>
       )}
     </div>
