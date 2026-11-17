@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 
 import { Avatar } from "./Avatar";
+import { MentionTextarea } from "./MentionTextarea";
 import { friendlyMessage } from "../lib/errors";
 
 const KIND_LABEL: Record<MessageKind, string> = {
@@ -149,29 +150,29 @@ export function MessageThread({
             send.mutate({ body: body.trim(), kind, mention_user_ids: mentions });
           }}
         >
-          <label className="thread-kind-select">
-            <span className="sr-only">消息类型</span>
-            <select value={kind} onChange={e => setKind(e.target.value as MessageKind)} aria-label="消息类型">
-              <option value="comment">讨论</option>
-              {target === "task" ? (
-                <>
-                  <option value="requirement">要求</option>
-                  <option value="blocker">受阻原因</option>
-                  <option value="unblock">解除受阻</option>
-                  <option value="handoff">交接</option>
-                </>
-              ) : (
-                <option value="note">说明</option>
-              )}
-            </select>
-          </label>
-          <textarea
+          {/* 活动讨论只有“讨论”一种，不再让用户在“讨论/说明”之间做无意义选择。 */}
+          {target === "task" && (
+            <label className="thread-kind-select">
+              <span className="sr-only">消息类型</span>
+              <select value={kind} onChange={e => setKind(e.target.value as MessageKind)} aria-label="消息类型">
+                <option value="comment">讨论</option>
+                <option value="requirement">要求</option>
+                <option value="blocker">受阻原因</option>
+                <option value="unblock">解除受阻</option>
+                <option value="handoff">交接</option>
+              </select>
+            </label>
+          )}
+          <MentionTextarea
             value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="写一句；可用下面的按钮 @ 成员"
-            maxLength={2000}
+            onChange={setBody}
+            mentions={mentions}
+            onMentionsChange={setMentions}
+            members={members}
+            currentUserId={currentUserId}
+            ariaLabel={`${title}内容`}
+            placeholder="写一句；输入 @ 可以提醒某位成员"
             rows={2}
-            aria-label={`${title}内容`}
           />
           {members.length > 0 && (
             <div className="thread-mentions" aria-label="提及成员">

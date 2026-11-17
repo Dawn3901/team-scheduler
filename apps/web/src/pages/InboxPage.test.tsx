@@ -60,11 +60,13 @@ describe("收件箱（CR-016 / MSG-3）", () => {
 
     expect(await screen.findByRole("heading", { name: "收件箱" })).toBeInTheDocument();
     // 标题是静态的，条目要等 /inbox 返回。
-    expect(await screen.findByText("写文档")).toBeInTheDocument();
+    // 消息正文是主信息，活动/任务标题退到副标题。
+    expect(await screen.findByText("@林 帮忙看下格式")).toBeInTheDocument();
+    expect(screen.getByText("在「写文档」中")).toBeInTheDocument();
     expect(screen.getByText("@我")).toBeInTheDocument();
     expect(screen.getByText(/1 条待确认通告/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /写文档/ }));
+    await user.click(screen.getByRole("button", { name: /帮忙看下格式/ }));
 
     await waitFor(() => {
       const mark = fetchMock.mock.calls.find(([url]) => url === "/api/v1/read-marks");

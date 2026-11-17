@@ -10,7 +10,9 @@ function targetPath(group: NoticeGroup): string | null {
   const { payload } = group.latest;
   if (!payload.team_id) return null;
   if (payload.event_id) return `/app/teams/${payload.team_id}/events/${payload.event_id}`;
-  return payload.task_id ? `/app/teams/${payload.team_id}/tasks?task=${payload.task_id}` : null;
+  if (payload.task_id) return `/app/teams/${payload.team_id}/tasks?task=${payload.task_id}`;
+  if (payload.announcement_id) return `/app/teams/${payload.team_id}/announcements`;
+  return null;
 }
 
 export default function NotificationsPage() {

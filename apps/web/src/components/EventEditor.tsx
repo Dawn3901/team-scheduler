@@ -1,4 +1,5 @@
 import { ApiError, createEvent, createEventMessage, getEvent, inviteParticipants, localInput, shiftDate, toUtc, updateEvent, type CalendarEvent, type EventInput, type EventScope, type Member } from "@teamsync/shared";
+import { MentionTextarea } from "./MentionTextarea";
 import { useState } from "react";
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { useAction } from "../hooks/useWork";
@@ -31,6 +32,9 @@ export default function EventEditor({teamId, timezone, members, current, initial
   const [allDay, setAllDay] = useState(current?.all_day || false);
   const [scope,setScope] = useState<EventScope>("this");
   const started = current ? Date.parse(current.start_at) <= now && scope === "this" : false;
+  // CR-016 反馈：新建活动时也能 @ 成员——备注输入支持手打 @，选中的人会收到提及通知。
+  const [noteText, setNoteText] = useState("");
+  const [noteMentions, setNoteMentions] = useState<number[]>([]);
   const [conflicts, setConflicts] = useState<{display_name:string; start_at:string; title:string|null}[]>([]);
   const [retry, setRetry] = useState<(() => Promise<unknown>) | null>(null);
   const start = localInput(current?.start_at || initial || new Date(now+3600000).toISOString(), timezone);
@@ -70,18 +74,26 @@ export default function EventEditor({teamId, timezone, members, current, initial
             const moved = startLocal !== localInput(current.start_at,timezone) || endLocal !== localInput(current.end_at,timezone);
             await updateEvent(current.id, {...changes, scope:String(f.get("scope") || "this") as EventScope});
             const added = participant_ids.filter(uid => !current.participants.some(p => p.user_id === uid));
-            const note = String(f.get("note") || "").trim();
-            // 备注只落在“本次新增的邀请”上；没有新增时改成一条讨论，避免误覆盖老成员的备注。
+            const note = noteText.trim();
+            // 备注落在“本次新增的邀请”上；同时留一条讨论，方便无法访问备注的人看到公开说明。
             if(added.length) await inviteParticipants(current.id, added, note || undefined);
-            else if(note) await createEventMessage(current.id, {kind: "note", body: `给参与者的说明：${note}`});
+            if(note) await createEventMessage(current.id, {
+              kind: "note",
+              body: note,
+              ...(noteMentions.length ? {mention_user_ids: noteMentions} : {}),
+            });
             if(moved || String(f.get("status") || "") === "cancelled") {
               const reason = String(f.get("reason") || "").trim();
               if(reason) await createEventMessage(current.id, {kind: moved ? "change_reason" : "note", body: reason});
             }
           } else {
             const created = await createEvent(teamId, data);
-            const note = String(f.get("note") || "").trim();
-            if(note) await createEventMessage(created.id, {kind: "note", body: `给参与者的说明：${note}`});
+            const note = noteText.trim();
+            if(note) await createEventMessage(created.id, {
+              kind: "note",
+              body: note,
+              ...(noteMentions.length ? {mention_user_ids: noteMentions} : {}),
+            });
           }
           onClose();
         } catch(err) {
@@ -103,7 +115,22 @@ export default function EventEditor({teamId, timezone, members, current, initial
       <label>活动描述<textarea name="description" maxLength={2000} defaultValue={current?.description || ""} /></label>
       {current && <label>变更原因（可选，会写进活动讨论并通知参与者）<input name="reason" maxLength={500} placeholder="例如：场地被占用" /></label>}
       <label>可见性<select name="visibility" defaultValue={current?.visibility || "team"}><option value="team">团队可见</option><option value="private">私密（仅组织者和参与者）</option></select></label>
-      <label>给参与者的说明（可选，仅组织者/管理员与该成员可见）<input name="note" maxLength={500} placeholder="例如：记得带电脑、提前 15 分钟到" /></label>
+      <div className="work-note-field">
+        <span className="work-note-label">给参与者的说明 / @ 提醒（可选）</span>
+        <MentionTextarea
+          value={noteText}
+          onChange={setNoteText}
+          mentions={noteMentions}
+          onMentionsChange={setNoteMentions}
+          members={invitableMembers}
+          currentUserId={currentUserId}
+          rows={2}
+          maxLength={500}
+          ariaLabel="给参与者的说明"
+          placeholder="例如：记得带电脑；输入 @ 可以直接提醒某位成员"
+        />
+        <p className="muted">新邀请的人会看到这句话（仅组织者/管理员与本人可见）；@ 到的成员会收到提及通知。</p>
+      </div>
       <fieldset><legend>邀请成员</legend>
         <div className="participant-tools"><button type="button" className="btn btn-ghost" disabled={toggleable.length === 0} onClick={toggleAll}>{allSelected ? "取消邀请全员" : "邀请全员"}</button></div>
         <div className="participant-list">

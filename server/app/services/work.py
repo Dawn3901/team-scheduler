@@ -130,6 +130,7 @@ def notify(
     title: str,
     payload: dict,
     key: str | None = None,
+    body: str | None = None,
 ) -> None:
     """写入通知；带 key 时不重复。
 
@@ -143,6 +144,7 @@ def notify(
         "team_id": team_id,
         "type": kind,
         "title": title,
+        "body": body,
         "payload_json": json.dumps(payload),
         "dedupe_key": key,
         "created_at": now_utc(),
@@ -154,6 +156,7 @@ def notify(
                 index_elements=["dedupe_key"],
                 set_={
                     "title": title,
+                    "body": body,
                     "payload_json": values["payload_json"],
                     "created_at": values["created_at"],
                     "read_at": None,

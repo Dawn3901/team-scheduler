@@ -67,23 +67,28 @@ export default function InboxPage() {
       )}
 
       <div className="inbox-list">
-        {query.data?.items.map(item => (
-          <button
-            type="button"
-            key={`${item.kind}-${item.target_type}-${item.target_id}-${item.created_at}`}
-            className="inbox-item"
-            disabled={busy}
-            onClick={() => void open(item)}
-          >
-            <span className="inbox-item-head">
-              <span className="inbox-kind">{KIND_LABEL[item.kind]}</span>
-              <strong>{item.title}</strong>
-              {item.unread && item.unread > 1 ? <span className="notice-count">×{item.unread}</span> : null}
-            </span>
-            <p className="inbox-preview">{item.preview || "（无正文）"}</p>
-            <span className="muted">{formatTime(item.created_at, "Asia/Shanghai")}</span>
-          </button>
-        ))}
+        {query.data?.items.map(item => {
+          // 消息以“说了什么”为主：正文大字，对象名退到副标题。
+          const primary = item.kind === "announcement" ? item.title : item.preview;
+          const secondary = item.kind === "announcement" ? item.preview : `在「${item.title}」中`;
+          return (
+            <button
+              type="button"
+              key={`${item.kind}-${item.target_type}-${item.target_id}-${item.created_at}`}
+              className="inbox-item"
+              disabled={busy}
+              onClick={() => void open(item)}
+            >
+              <span className="inbox-item-head">
+                <span className="inbox-kind">{KIND_LABEL[item.kind]}</span>
+                <span className="inbox-context">{secondary}</span>
+                {item.unread && item.unread > 1 ? <span className="notice-count">×{item.unread}</span> : null}
+              </span>
+              <p className="inbox-content">{primary || "（无正文）"}</p>
+              <span className="muted">{formatTime(item.created_at, "Asia/Shanghai")}</span>
+            </button>
+          );
+        })}
       </div>
 
       {query.data && query.data.items.length > 0 && (

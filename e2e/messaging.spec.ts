@@ -75,7 +75,8 @@ test("通告：Admin 发布，成员点我知道了，作者看到回执进度",
   await owner.getByLabel("正文").fill("全员必到，带上周进度");
   await owner.getByRole("button", { name: "发布", exact: true }).click();
   await expect(owner.getByTestId("announcement-card")).toHaveCount(1);
-  await expect(owner.getByLabel("已确认 0/2")).toBeVisible();
+  // 发布者默认已确认，所以起步就是 1/2。
+  await expect(owner.getByLabel("已确认 1/2")).toBeVisible();
 
   // 成员在通告页看到“待确认”，点击后进度变化。
   await member.goto(`/app/teams/${teamId}/announcements`);
@@ -84,12 +85,13 @@ test("通告：Admin 发布，成员点我知道了，作者看到回执进度",
   await expect(member.getByText("已确认", { exact: true })).toBeVisible();
 
   await owner.reload();
-  await expect(owner.getByLabel("已确认 1/2")).toBeVisible();
+  await expect(owner.getByLabel("已确认 2/2")).toBeVisible();
   await owner.getByRole("button", { name: "回执" }).click();
   const dialog = owner.getByRole("dialog", { name: "回执名单" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("已确认 1/2")).toBeVisible();
-  await expect(dialog.getByText("未确认")).toBeVisible();
+  await expect(dialog.getByText("已确认 2/2")).toBeVisible();
+  // 作者与成员都确认过，名单里没有“未确认”的人。
+  await expect(dialog.getByText("未确认")).toHaveCount(0);
   await owner.close();
   await member.close();
 });
@@ -224,6 +226,47 @@ test("普通成员不能发布通告（前端无入口、后端 403）", async (
     return response.status;
   }, teamId);
   expect(forbidden).toBe(403);
+  await owner.close();
+  await member.close();
+});
+
+test("新建活动时输入 @ 可提醒成员，且说明写进活动讨论", async ({ browser }) => {
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const owner = await browser.newPage();
+  await register(owner, `men_owner_${suffix}`, "组长");
+  const teamId = await createTeam(owner, `提及队 ${suffix}`);
+  const code = await inviteCode(owner);
+
+  const member = await browser.newPage();
+  await register(member, `men_member_${suffix}`, "组员丁");
+  await joinTeam(member, code);
+  const guestId = await meId(member);
+
+  await owner.goto(`/app/teams/${teamId}/calendar`);
+  await owner.getByRole("button", { name: "新建活动" }).first().click();
+  const dialog = owner.getByRole("dialog", { name: "新建活动" });
+  await dialog.getByLabel("活动标题").fill("周五评审");
+  const note = dialog.getByLabel("给参与者的说明");
+  await note.click();
+  await note.pressSequentially("@组");
+  const menu = owner.getByRole("listbox", { name: "选择要 @ 的成员" });
+  await expect(menu).toBeVisible();
+  await menu.getByRole("button", { name: "@组员丁" }).click();
+  await expect(note).toHaveValue("@组员丁 ");
+  await note.pressSequentially("记得带电脑");
+  await dialog.getByRole("button", { name: "保存活动" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // 日历上打开刚建的活动，讨论里能看到这条说明。
+  await owner.locator(".rbc-event, .timeline-event, .timeline-allday button")
+    .filter({ hasText: "周五评审" }).first().click();
+  await expect(owner.getByRole("region", { name: "活动讨论" })).toBeVisible();
+  const threadItem = owner.locator(".thread-item").filter({ hasText: "记得带电脑" });
+  await expect(threadItem).toHaveCount(1);
+
+  await member.goto("/app/inbox");
+  await expect(member.getByText(/记得带电脑/)).toBeVisible();
+
   await owner.close();
   await member.close();
 });

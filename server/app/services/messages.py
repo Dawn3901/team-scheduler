@@ -168,6 +168,7 @@ def _notify_recipients(
     target_type: str,
     target_id: int,
     title: str,
+    body: str,
     mentioned: set[int],
 ) -> None:
     """@ 优先 + 对象负责人/创建者；作者本人不收自己的消息通知。"""
@@ -193,6 +194,10 @@ def _notify_recipients(
         if announcement is not None:
             watchers = {announcement.author_id}
 
+    # 通知正文以“谁说了什么”为主：标题放内容摘要，body 放所属对象，避免只看到活动标题。
+    preview = " ".join(body.split())
+    if len(preview) > 60:
+        preview = preview[:60] + "…"
     for user_id in sorted(mentioned | (watchers - mentioned)):
         if user_id == author.id:
             continue
@@ -202,9 +207,10 @@ def _notify_recipients(
             user_id,
             ctx.team.id,
             kind,
-            f"{author.display_name}：{title}",
+            f"{author.display_name}：{preview}",
             payload,
             key=work.coalesce_key(kind, key_target, user_id),
+            body=f"在「{title}」中",
         )
     # 通告下的追问也要让作者收到回执外的提醒（watchers 已覆盖），此处不额外扩散。
 
@@ -249,7 +255,7 @@ def create_message(
         db.add(MessageMention(message_id=message.id, user_id=user_id))
 
     title = getattr(target, "title", "") or "新消息"
-    _notify_recipients(db, ctx, user, target_type, target_id, title, mentions)
+    _notify_recipients(db, ctx, user, target_type, target_id, title, text, mentions)
     db.commit()
     return message_out(db, message, sorted(mentions))
 

@@ -80,7 +80,8 @@ def test_only_admin_or_owner_can_publish(client, actors):
         == 403
     )
     assert _announcement(client, headers, team, admin)["title"] == "周五例会改期"
-    assert _announcement(client, headers, team, owner)["acked"] is False
+    # 发布者默认已确认，不再要求自己点“我知道了”。
+    assert _announcement(client, headers, team, owner)["acked"] is True
 
 
 def test_announcement_list_pins_and_reports_unacked(client, actors):
@@ -107,9 +108,11 @@ def test_ack_is_idempotent_and_receipts_are_author_only(client, actors):
     assert receipts.status_code == 200
     body = receipts.json()
     assert body["total"] == 4
-    assert body["acked_count"] == 1
+    # 作者默认 1 + 成员点了 1 = 2。
+    assert body["acked_count"] == 2
     unacked = {p["user_id"] for p in body["items"] if not p["acked"]}
     assert member.id not in unacked
+    assert owner.id not in unacked
     assert other.id in unacked
 
     # 普通成员看不到回执，但能看详情。
@@ -468,3 +471,33 @@ def test_deleted_message_and_announcement_disappear(client, actors, db):
 def _note_of(client, path, headers, user_id):
     body = client.get(path, headers=headers).json()
     return next(p["note"] for p in body["participants"] if p["user_id"] == user_id)
+
+
+def test_publisher_does_not_need_to_ack_own_announcement(client, actors):
+    team, owner, _admin, _member, *_rest = actors
+    headers = _rest[-1]
+    item = _announcement(client, headers, team, owner)
+    detail = client.get(f"/api/v1/announcements/{item['id']}", headers=headers(owner)).json()
+    assert detail["acked"] is True
+    inbox = client.get("/api/v1/inbox", headers=headers(owner)).json()
+    assert [i for i in inbox["items"] if i["kind"] == "announcement"] == []
+
+
+def test_message_notification_shows_content_not_object_title(client, actors, db):
+    team, owner, _admin, member, *_rest = actors
+    headers = _rest[-1]
+    task = _task(client, headers, team, owner, member)
+    client.post(
+        f"/api/v1/tasks/{task['id']}/messages",
+        json={"body": "接口字段改成 snake_case 了，请同步"},
+        headers=headers(owner),
+    )
+    notice = db.scalars(
+        select(Notification).where(
+            Notification.user_id == member.id, Notification.type == "message.created"
+        )
+    ).one()
+    # 标题是内容摘要，对象名退到副标题。
+    assert "接口字段改成 snake_case" in notice.title
+    assert task["title"] not in notice.title
+    assert notice.body == f"在「{task['title']}」中"

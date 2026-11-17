@@ -2303,7 +2303,12 @@ body {
 .inbox-item:hover { border-color: var(--accent); }
 .inbox-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .inbox-kind { padding: 1px 6px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-strong); font-size: 10px; font-weight: 650; }
-.inbox-preview { margin: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-context { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.inbox-content {
+  margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--ink);
+  line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere;
+}
 
 @media (max-width: 600px) {
   .thread { padding: 12px; border-radius: 12px; }
@@ -2348,3 +2353,28 @@ body {
 .note-form { margin: 10px 0; padding: 12px; border: 1px dashed var(--line-strong); border-radius: 12px; }
 .thread-dialog { max-height: 86vh; overflow-y: auto; }
 .inline-check { display: flex !important; align-items: center; gap: 8px; }
+
+.mention-field { position: relative; display: grid; }
+.mention-field textarea {
+  width: 100%; resize: vertical; min-height: 56px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 12.5px;
+}
+.mention-menu {
+  position: absolute; z-index: 20; left: 0; bottom: calc(100% + 4px);
+  min-width: 160px; max-height: 190px; overflow-y: auto;
+  margin: 0; padding: 4px; list-style: none;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--surface); box-shadow: 0 12px 30px rgb(15 23 42 / 16%);
+}
+.mention-option {
+  display: block; width: 100%; padding: 6px 8px; border: 0; border-radius: 7px;
+  background: none; color: var(--ink-2); font: inherit; font-size: 12px;
+  text-align: left; cursor: pointer;
+}
+.mention-option:hover, .mention-option.active { background: var(--accent-soft); color: var(--accent-strong); }
+.thread-form .mention-field textarea { min-height: 56px; }
+
+.work-note-field { display: grid; gap: 6px; }
+.work-note-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.work-note-field .muted { margin: 0; font-size: 11px; }

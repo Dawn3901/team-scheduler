@@ -208,6 +208,12 @@ def create_announcement(
     )
     db.add(item)
     db.flush()
+    # 发布者自己不需要点“我知道了”：默认记为已确认，回执统计也从这里开始。
+    db.add(
+        AnnouncementAck(
+            announcement_id=item.id, user_id=author.id, acked_at=now
+        )
+    )
     for user_id in sorted(work.active_ids(db, ctx.team.id) - {author.id}):
         work.notify(
             db,
